@@ -1,0 +1,12 @@
+resolver: lts-17.13
+
+extra-deps:
+  # At the time of writing, no snapshot includes Clash 1.4 yet so we add it - and
+  # its dependencies - manually.
+  - lazysmallcheck-0.6
+  - Stream-0.4.7.2
+  - arrows-0.4.4.2
+  - git: https://github.com/clash-lang/clash-protocols.git
+    commit: 9795f1480f9919d9eb431d2d9f7760d5bb93c643
+  - git: https://github.com/cchalmers/circuit-notation.git
+    commit: 0fe897cb95bd1be87abed044f4072f104dec2f7d
