@@ -4,12 +4,12 @@
 module Tests.PrimeField where
 
 import Prelude
+import Data.Proxy (Proxy (..))
 
 import Test.Tasty
 import Test.Tasty.QuickCheck
 import Test.QuickCheck.Hedgehog
 
-import           Data.Proxy (Proxy (..))
 import qualified Algebra.Field
 import qualified Algebra.Ring
 import qualified MathObj.Wrapper.Haskell98 as W

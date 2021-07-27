@@ -4,17 +4,18 @@
 {-# LANGUAGE RebindableSyntax      #-}
 
 module PrimeField
-  ( C (..)
-  , T
+  ( C(..)
+  , T(..)
+  , legendreSymbol
   , gen
   , genUnit
   ) where
 
-import qualified Prelude as P
-import           Control.Applicative (Applicative(..), (<$>))
+import           Prelude             (Integral, (<$>))
+import           Control.Applicative (Applicative(..))
 import           Data.Bits           (Bits(..), FiniteBits(..))
 import           Data.Proxy          (Proxy(..))
-import           GHC.TypeLits        (KnownNat, Nat, natVal)
+import           GHC.TypeLits        (KnownNat, natVal)
 
 import qualified Hedgehog as H
 import qualified Hedgehog.Gen as Gen
@@ -27,21 +28,17 @@ import qualified Algebra.Ring
 import qualified Algebra.ZeroTestable
 import qualified MathObj.Wrapper.Haskell98 as W
 
+import           Utils (foldrBits)
+
 --
 
-class (KnownNat p, Algebra.Ring.C t) => (C (p :: Nat) t) where
+class (KnownNat p, Algebra.Ring.C t, Eq t, FiniteBits t, Show t) => (C p t) where
   into :: t -> Proxy p -> t
   outfrom :: t -> Proxy p -> t
   reduce1 :: t -> Proxy p -> t
   reduce2 :: t -> Proxy p -> t
 
 --
-
-instance (KnownNat p, P.Integral t) => (C p (W.T t)) where
-  x `into` modP = x `mod` fromInteger (natVal modP)
-  x `outfrom` _ = x
-  reduce1 = into
-  reduce2 = into
 
 instance (Applicative W.T) where
   pure = W.Cons
@@ -64,6 +61,12 @@ instance (Bits t) => (Bits (W.T t)) where
 instance (FiniteBits t) => (FiniteBits (W.T t)) where
   finiteBitSize = finiteBitSize . W.decons
 
+instance (KnownNat p, Integral t, Eq t, FiniteBits t, Show t) => (C p (W.T t)) where
+  x `into` modP = x `mod` fromInteger (natVal modP)
+  x `outfrom` _ = x
+  reduce1 = into
+  reduce2 = into
+
 --
 
 newtype T p t = T t deriving (Eq, Functor, Show)
@@ -76,15 +79,15 @@ modulusOf = fromInteger . natVal . modulusPOf
 
 --
 
-instance (C p t, Algebra.Additive.C t, Eq t) => (Algebra.ZeroTestable.C (T p t)) where
+instance (C p t) => (Algebra.ZeroTestable.C (T p t)) where
   isZero = Algebra.ZeroTestable.defltIsZero
 
-instance (C p t, Algebra.Additive.C t) => (Algebra.Additive.C (T p t)) where
+instance (C p t) => (Algebra.Additive.C (T p t)) where
   zero = T zero
   (T x) + (T y) = let z = T $ (x + y) `reduce1` modulusPOf z in z
   negate (T x) = let z = T $ modulusOf z - x in z
 
-instance (C p t, Algebra.Ring.C t) => (Algebra.Ring.C (T p t)) where
+instance (C p t) => (Algebra.Ring.C (T p t)) where
   (T x) * (T y) = let z = T $ (x * y) `reduce2` modulusPOf z in z
   fromInteger i
     | i < 0 = negate . fromInteger $ -i
@@ -92,28 +95,27 @@ instance (C p t, Algebra.Ring.C t) => (Algebra.Ring.C (T p t)) where
 
 --
 
-foldrBits :: (FiniteBits i) => (a -> a) -> (a -> a) -> a -> i -> a
-foldrBits t f x bv = fst $ until g h (x, finiteBitSize bv - 1 - countLeadingZeros bv) where
-  g (_, i) = i < 0
-  h (y, i) = (if testBit bv i then t y else f y, i - 1)
-
-toThePowerOf :: (C p t, Algebra.Ring.C t, FiniteBits t) => T p t -> t -> T p t
+toThePowerOf :: (C p t) => T p t -> t -> T p t
 toThePowerOf x = foldrBits sm s one where
   sm = (x *) . s
   s = Algebra.Ring.sqr
 
-instance (C p t, Algebra.Ring.C t, Eq t, FiniteBits t) => (Algebra.Field.C (T p t)) where
+instance (C p t) => (Algebra.Field.C (T p t)) where
   recip 0 = error "divide by zero"
   recip x = x `toThePowerOf` (modulusOf x - 2)
 
+legendreSymbol :: (C p t) => T p t -> T p t
+legendreSymbol 0 = 0
+legendreSymbol x = x `toThePowerOf` (modulusOf x `shiftR` 1)
+
 --
 
-gen :: (KnownNat p, C p t, Algebra.Ring.C t, H.MonadGen m) => Proxy p -> m (T p t)
+gen :: (C p t, H.MonadGen m) => Proxy p -> m (T p t)
 gen modP = do
   x <- Gen.integral $ Range.linear 0 (natVal modP - 1)
   return $ fromInteger x
 
-genUnit :: (KnownNat p, C p t, Algebra.Ring.C t, H.MonadGen m) => Proxy p -> m (T p t)
+genUnit :: (C p t, H.MonadGen m) => Proxy p -> m (T p t)
 genUnit modP = do
   x <- Gen.integral $ Range.linear 1 (natVal modP - 1)
   return $ fromInteger x
