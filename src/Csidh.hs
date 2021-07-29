@@ -1,6 +1,3 @@
-{-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE RebindableSyntax #-}
-
 module Csidh
   ( K
   , Prvkey
@@ -31,7 +28,7 @@ import qualified Clash.Prelude as C
 import qualified PrimeField
 import           Csidh.Lib
 
---
+-- $
 
 type CsidhVec = C.Vec 74
 type Scalar = W.T (C.Unsigned 10)
@@ -61,7 +58,7 @@ replaceWith :: (KnownNat n) => (a -> Bool) -> a -> C.Vec n a -> C.Vec n a
 replaceWith cond x xs = fmap (\_x -> if cond _x then x else _x) xs
 
 ellTorsionPoint :: (PrimeField.C P t) => (Scalar, K t, K t, K t) -> (K t, K t)
-ellTorsionPoint (ell, x, z, a) = vectorMultiplicationWithCofactor (replaceWith (ell ==) one ells, x, z, a, 4)
+ellTorsionPoint (ell, x, z, a) = vectorMultiplicationWithCofactor (replaceWith (ell ==) 1 ells, x, z, a, 4)
 
 --
 
@@ -72,8 +69,7 @@ action1 (sk, a, xP) = (sk', a'*t) where
     1 -> 1
     0 -> 0
     _ -> -1
-  -- ells' = fmap f $ C.zip sk ells where f (s, ell) = if s*twist > 0 then 1 else ell
-  ells' = snd . C.unzip . replaceWith ((0 <) . (twist *) . fst) (0, one) $ C.zip sk ells
+  ells' = snd . C.unzip . replaceWith ((0 <) . (twist *) . fst) (0, 1) $ C.zip sk ells
   (xQ, zQ) = vectorMultiplicationWithCofactor (ells', xP*t, 1, a*t, 4)
   (_, _, a', sk', _) = until f g (xQ, zQ, a*t, sk, 0) where
     f (_, 0, _, _, _) = True
@@ -81,10 +77,10 @@ action1 (sk, a, xP) = (sk', a'*t) where
     g (_xQ, _zQ, _a, _sk, i)
       | (sk C.!! i) * twist > 0 = let
         ell = ells C.!! i
-        (xR, zR) = vectorMultiplicationWithCofactor (replaceWith (ell ==) one ells', _xQ / _zQ, 1, _a, 4)
+        (xR, zR) = vectorMultiplicationWithCofactor (replaceWith (ell ==) 1 ells', _xQ / _zQ, 1, _a, 4)
         ((_a', _xQ', _zQ'), _sk') = case zR of
-          | 0 -> ((_a, _xQ, _zQ), _sk)
-          | otherwise -> (actWithEllOnMontgomeryPlus (_a, ell, xR / zR, _xQ / _zQ), C.replace i ((sk C.!! i) - twist) _sk)
+          0 -> ((_a, _xQ, _zQ), _sk)
+          _ -> (actWithEllOnMontgomeryPlus (_a, ell, xR / zR, _xQ / _zQ), C.replace i ((sk C.!! i) - twist) _sk)
         in (_xQ', _zQ', _a', _sk', i + 1)
       | otherwise = (_xQ, _zQ, _a, _sk, i + 1)
 

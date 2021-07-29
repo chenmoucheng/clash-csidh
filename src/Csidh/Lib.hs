@@ -1,5 +1,3 @@
-{-# LANGUAGE RebindableSyntax #-}
-
 module Csidh.Lib where
 
 import           Prelude   ()
@@ -12,7 +10,7 @@ import qualified Algebra.Ring
 
 import           Utils (EvalEndofunc(..), Ratio(..), compose, foldrBits)
 
---
+-- $
 
 stepZeroMontgomeryPlus :: (Algebra.Ring.C t) => (t, t, t, t, t, t, t) -> (t, t, t, t, t, t, t)
 stepZeroMontgomeryPlus (x1, z1, x2, z2, x3, z3, a) = (x1, z1, (x2^2 - z2^2)^2, 4*x2*z2*(x2^2 + a*x2*z2 + z2^2), 4*(x2*x3 - z2*z3)^2*z1, 4*(x2*z3 - z2*x3)^2*x1, a)

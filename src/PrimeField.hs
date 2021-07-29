@@ -1,8 +1,3 @@
-{-# LANGUAGE DeriveFunctor         #-}
-{-# LANGUAGE FlexibleInstances     #-}
-{-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE RebindableSyntax      #-}
-
 module PrimeField
   ( C(..)
   , T(..)
@@ -30,7 +25,7 @@ import qualified MathObj.Wrapper.Haskell98 as W
 
 import           Utils (foldrBits)
 
---
+-- $
 
 class (KnownNat p, Algebra.Ring.C t, Eq t, FiniteBits t, Show t) => (C p t) where
   into :: t -> Proxy p -> t
@@ -49,8 +44,8 @@ instance (Bits t) => (Bits (W.T t)) where
   (.|.) = liftA2 (.|.)
   xor = liftA2 xor
   complement = fmap complement
-  shift x i = flip shift i <$> x
-  rotate x i = flip rotate i <$> x
+  x `shift` i = flip shift i <$> x
+  x `rotate` i = flip rotate i <$> x
   bitSize = bitSize . W.decons
   bitSizeMaybe = bitSizeMaybe . W.decons
   isSigned = isSigned . W.decons
@@ -96,7 +91,7 @@ instance (C p t) => (Algebra.Ring.C (T p t)) where
 --
 
 toThePowerOf :: (C p t) => T p t -> t -> T p t
-toThePowerOf x = foldrBits sm s one where
+toThePowerOf x = foldrBits sm s 1 where
   sm = (x *) . s
   s = Algebra.Ring.sqr
 

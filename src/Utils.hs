@@ -1,5 +1,3 @@
-{-# LANGUAGE RebindableSyntax #-}
-
 module Utils where
 
 import           Prelude   ()
@@ -8,17 +6,33 @@ import           Data.Bits (Bits(..), FiniteBits(..))
 import           NumericPrelude
 import qualified Algebra.Ring
 
+-- $
+
+_xgcd :: Integer -> Integer -> (Integer, (Integer, Integer))
+_xgcd x y
+  | x < 0 = let (g, (a, b)) = _xgcd (-x) y in (g, (-a, b))
+  | y < 0 = let (g, (a, b)) = _xgcd x (-y) in (g, (a, -b))
+  | x < y = let (g, (a, b)) = _xgcd y x in (g, (b, a))
+  | y == 0 = (x, (1, 0))
+  | otherwise = let
+    (q, r) = x `divMod` y
+    (g, (a', b')) = _xgcd y r
+  in (g, (b', a' - q * b'))
+
+invMod :: Integer -> Integer -> Integer
+x `invMod` n = a where (_, (a, _)) = _xgcd x n
+
 --
 
-data Ratio t = R t t deriving (Show)
-instance (Algebra.Ring.C t, Eq t) => (Eq (Ratio t)) where
+data Ratio a = R a a deriving (Show)
+instance (Algebra.Ring.C a, Eq a) => (Eq (Ratio a)) where
   R x1 z1 == R x2 z2 = x1 * z2 == x2 * z1
 
-data EvalEndofunc t = E (t -> t) t
-instance (Eq t) => (Eq (EvalEndofunc t)) where
+data EvalEndofunc a = E (a -> a) a
+instance (Eq a) => (Eq (EvalEndofunc a)) where
   E f x == E g y = f x == g y
 
-compose :: (Eq t) => EvalEndofunc t -> EvalEndofunc t -> EvalEndofunc t
+compose :: (Eq a) => EvalEndofunc a -> EvalEndofunc a -> EvalEndofunc a
 compose (E f x) (E g y)
   | x == y = E (f . g) x
   | otherwise = error "cannot compose endofunctions evaluated at different inputs"

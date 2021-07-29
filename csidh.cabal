@@ -20,12 +20,16 @@ common common-options
     DeriveLift
     DeriveTraversable
     DerivingStrategies
+    FlexibleContexts
+    FlexibleInstances
     InstanceSigs
     KindSignatures
     LambdaCase
+    MultiParamTypeClasses
     NoStarIsType
     PolyKinds
     RankNTypes
+    RebindableSyntax
     ScopedTypeVariables
     StandaloneDeriving
     TupleSections
@@ -83,6 +87,7 @@ library
   exposed-modules:
     Csidh
     PrimeField
+    PrimeField.Montgomery1
   other-modules:
     Csidh.Lib
     Utils
@@ -127,6 +132,7 @@ test-suite test-library
   other-modules:
     Tests.Csidh
     Tests.PrimeField
+    Tests.PrimeField.Montgomery1
   build-depends:
     csidh,
     QuickCheck,
