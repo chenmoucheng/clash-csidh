@@ -12,7 +12,7 @@ module Csidh
   , prop_groupActionIsCommutative
   ) where
 
-import           Prelude      ((<$>))
+import           Prelude      ()
 import           Data.Bits    (FiniteBits)
 import           GHC.TypeLits (KnownNat)
 
@@ -24,6 +24,7 @@ import           NumericPrelude
 import qualified Algebra.Ring
 import qualified MathObj.Wrapper.Haskell98 as W
 
+import           Clash.Prelude (Vec((:>)))
 import qualified Clash.Prelude as C
 import qualified PrimeField
 import           Csidh.Lib
@@ -34,12 +35,12 @@ type CsidhVec = C.Vec 74
 type Scalar = W.T (C.Unsigned 10)
 
 ells :: CsidhVec Scalar
-ells = fromInteger <$> $(C.listToVecTH
-  [ 3 :: Integer, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37, 41, 43, 47, 53, 59, 61, 67, 71,
-    73, 79, 83, 89, 97, 101, 103, 107, 109, 113, 127, 131, 137, 139, 149, 151, 157,
-    163, 167, 173, 179, 181, 191, 193, 197, 199, 211, 223, 227, 229, 233, 239, 241,
-    251, 257, 263, 269, 271, 277, 281, 283, 293, 307, 311, 313, 317, 331, 337, 347,
-    349, 353, 359, 367, 373, 587 ])
+ells =
+    3 :> 5 :> 7 :> 11 :> 13 :> 17 :> 19 :> 23 :> 29 :> 31 :> 37 :> 41 :> 43 :> 47 :> 53 :> 59 :> 61 :> 67 :> 71 :>
+    73 :> 79 :> 83 :> 89 :> 97 :> 101 :> 103 :> 107 :> 109 :> 113 :> 127 :> 131 :> 137 :> 139 :> 149 :> 151 :> 157 :>
+    163 :> 167 :> 173 :> 179 :> 181 :> 191 :> 193 :> 197 :> 199 :> 211 :> 223 :> 227 :> 229 :> 233 :> 239 :> 241 :>
+    251 :> 257 :> 263 :> 269 :> 271 :> 277 :> 281 :> 283 :> 293 :> 307 :> 311 :> 313 :> 317 :> 331 :> 337 :> 347 :>
+    349 :> 353 :> 359 :> 367 :> 373 :> 587 :> C.Nil
 
 type Prvkey = CsidhVec (W.T (C.Signed 4))
 type P = 5326738796327623094747867617954605554069371494832722337612446642054009560026576537626892113026381253624626941643949444792662881241621373288942880288065659

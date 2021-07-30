@@ -13,10 +13,9 @@ import           GHC.TypeNats        (type (<=))
 
 import           NumericPrelude
 import qualified Algebra.Additive
+import qualified Algebra.IntegralDomain
 import qualified Algebra.Laws
 import qualified Algebra.Ring
-import qualified Algebra.Units
-import qualified Algebra.ZeroTestable
 
 import qualified PrimeField
 import           Utils (invMod)
@@ -77,7 +76,7 @@ instance (FiniteBits t) => (FiniteBits (T r t)) where
 
 --
 
-instance (KnownNat p, KnownNat r, 2 <= r, Algebra.Units.C t, Algebra.ZeroTestable.C t, Eq t, FiniteBits t, Ord t, Show t) => (PrimeField.C p (T r t)) where
+instance (KnownNat p, KnownNat r, 2 <= r, Algebra.IntegralDomain.C t, Eq t, FiniteBits t, Ord t, Show t) => (PrimeField.C p (T r t)) where
   x `into` modP = Cons $ decons (multByR x) `mod` fromInteger (natVal modP)
   outfrom = PrimeField.reduce2
   (Cons x) `reduce1` modP = Cons $ if x < p then x else x - p where p = fromInteger (natVal modP)
