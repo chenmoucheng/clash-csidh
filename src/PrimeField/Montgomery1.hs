@@ -18,7 +18,6 @@ import qualified Algebra.Laws
 import qualified Algebra.Ring
 
 import qualified PrimeField
-import           Utils (invMod)
 
 -- $
 
@@ -76,26 +75,26 @@ instance (FiniteBits t) => (FiniteBits (T r t)) where
 
 --
 
-instance (KnownNat p, KnownNat r, 2 <= r, Algebra.IntegralDomain.C t, Eq t, FiniteBits t, Ord t, Show t) => (PrimeField.C p (T r t)) where
-  x `into` modP = Cons $ decons (multByR x) `mod` fromInteger (natVal modP)
+instance (KnownNat p, KnownNat q, KnownNat r, 2 <= r, Algebra.IntegralDomain.C t, Eq t, FiniteBits t, Ord t, Show t) => (PrimeField.C p q (T r t)) where
+  x `into` (modP, _) = Cons $ decons (multByR x) `mod` fromInteger (natVal modP)
   outfrom = PrimeField.reduce2
-  (Cons x) `reduce1` modP = Cons $ if x < p then x else x - p where p = fromInteger (natVal modP)
-  x `reduce2` modP = x' `PrimeField.reduce1` modP where
+  (Cons x) `reduce1` (modP, _) = Cons $ if x < p then x else x - p where p = fromInteger (natVal modP)
+  x `reduce2` (modP, auxP) = x' `PrimeField.reduce1` (modP, auxP) where
     a = modR x
     b = a * fromInteger p'
     c = modR b
     d = x + c * fromInteger p
     x' = divByR d
-    p' = (-p) `invMod` radix x
+    p' = natVal auxP
     p = natVal modP
 
 --
 
 prop_homomorphism
-  :: (PrimeField.C p t, PrimeField.C p (T r t))
-  => Proxy p
-  -> (PrimeField.T p (T r t) -> PrimeField.T p (T r t) -> PrimeField.T p (T r t))
-  -> (PrimeField.T p t -> PrimeField.T p t -> PrimeField.T p t)
-  -> PrimeField.T p (T r t) -> PrimeField.T p (T r t) -> Bool
+  :: (PrimeField.C p q t, PrimeField.C p q (T r t))
+  => (Proxy p, Proxy q)
+  -> (PrimeField.T p q (T r t) -> PrimeField.T p q (T r t) -> PrimeField.T p q (T r t))
+  -> (PrimeField.T p q t -> PrimeField.T p q t -> PrimeField.T p q t)
+  -> PrimeField.T p q (T r t) -> PrimeField.T p q (T r t) -> Bool
 prop_homomorphism modP = Algebra.Laws.homomorphism phi where
   phi (PrimeField.T x) = PrimeField.T $ decons (x `PrimeField.outfrom` modP) `PrimeField.into` modP

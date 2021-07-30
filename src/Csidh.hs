@@ -1,5 +1,6 @@
 module Csidh
   ( K
+  , P
   , Prvkey
   , Scalar
   , action
@@ -44,7 +45,7 @@ ells =
 
 type Prvkey = CsidhVec (W.T (C.Signed 4))
 type P = 5326738796327623094747867617954605554069371494832722337612446642054009560026576537626892113026381253624626941643949444792662881241621373288942880288065659
-type K t = PrimeField.T P t
+type K q t = PrimeField.T P q t
 
 --
 
@@ -58,12 +59,12 @@ vectorMultiplicationWithCofactor (ns, x, z, a, c) = C.foldl f (x0, z0) ns where
 replaceWith :: (KnownNat n) => (a -> Bool) -> a -> C.Vec n a -> C.Vec n a
 replaceWith cond x xs = fmap (\_x -> if cond _x then x else _x) xs
 
-ellTorsionPoint :: (PrimeField.C P t) => (Scalar, K t, K t, K t) -> (K t, K t)
+ellTorsionPoint :: (PrimeField.C P q t) => (Scalar, K q t, K q t, K q t) -> (K q t, K q t)
 ellTorsionPoint (ell, x, z, a) = vectorMultiplicationWithCofactor (replaceWith (ell ==) 1 ells, x, z, a, 4)
 
 --
 
-action1 :: (PrimeField.C P t) => (Prvkey, K t, K t) -> (Prvkey, K t)
+action1 :: (PrimeField.C P q t) => (Prvkey, K q t, K q t) -> (Prvkey, K q t)
 action1 (sk, a, xP) = (sk', a'*t) where
   t = PrimeField.legendreSymbol $ xP^3 + a*xP^2 + xP
   twist = case t of
@@ -85,7 +86,7 @@ action1 (sk, a, xP) = (sk', a'*t) where
         in (_xQ', _zQ', _a', _sk', i + 1)
       | otherwise = (_xQ, _zQ, _a, _sk, i + 1)
 
-action :: (PrimeField.C P t, KnownNat n) => (Prvkey, K t, C.Vec n (K t)) -> K t
+action :: (PrimeField.C P q t, KnownNat n) => (Prvkey, K q t, C.Vec n (K q t)) -> K q t
 action (sk, a, xPs) = a' where
   ((_, a'), _) = until f g ((sk, a), 0) where
     f ((_sk, _), i)
@@ -109,7 +110,7 @@ genkey2 = do
 
 --
 
-prop_groupActionIsCommutative :: (KnownNat n, PrimeField.C P t) => Prvkey -> Prvkey -> C.Vec n (K t) -> Bool
+prop_groupActionIsCommutative :: (KnownNat n, PrimeField.C P q t) => Prvkey -> Prvkey -> C.Vec n (K q t) -> Bool
 prop_groupActionIsCommutative skA skB xPs = action (skA, pkB, xPs) == action (skB, pkA, xPs) where
     pkA = action (skA, 0, xPs)
     pkB = action (skB, 0, xPs)

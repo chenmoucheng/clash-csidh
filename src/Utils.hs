@@ -8,22 +8,6 @@ import qualified Algebra.Ring
 
 -- $
 
-_xgcd :: Integer -> Integer -> (Integer, (Integer, Integer))
-_xgcd x y
-  | x < 0 = let (g, (a, b)) = _xgcd (-x) y in (g, (-a, b))
-  | y < 0 = let (g, (a, b)) = _xgcd x (-y) in (g, (a, -b))
-  | x < y = let (g, (a, b)) = _xgcd y x in (g, (b, a))
-  | y == 0 = (x, (1, 0))
-  | otherwise = let
-    (q, r) = x `divMod` y
-    (g, (a', b')) = _xgcd y r
-  in (g, (b', a' - q * b'))
-
-invMod :: Integer -> Integer -> Integer
-x `invMod` n = a where (_, (a, _)) = _xgcd x n
-
---
-
 data Ratio a = R a a deriving (Show)
 instance (Algebra.Ring.C a, Eq a) => (Eq (Ratio a)) where
   R x1 z1 == R x2 z2 = x1 * z2 == x2 * z1
