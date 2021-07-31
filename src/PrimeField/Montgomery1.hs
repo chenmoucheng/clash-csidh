@@ -3,13 +3,12 @@ module PrimeField.Montgomery1
   , prop_homomorphism
   ) where
 
-import           Prelude             ((<$>))
-import           Control.Applicative (Applicative(..))
-import           Data.Bits           (Bits(..), FiniteBits(..))
-import           Data.Proxy          (Proxy(..))
-import           GHC.TypeLits        (KnownNat, natVal)
-import           GHC.TypeLits.Extra  (type CLog)
-import           GHC.TypeNats        (type (<=))
+import           Prelude            ((<$>))
+import           Data.Bits          (Bits(..), FiniteBits(..))
+import           Data.Proxy         (Proxy(..))
+import           GHC.TypeLits       (KnownNat, natVal)
+import           GHC.TypeLits.Extra (type CLog)
+import           GHC.TypeNats       (type (<=))
 
 import           NumericPrelude
 import qualified Algebra.Additive
@@ -21,7 +20,8 @@ import qualified PrimeField
 
 -- $
 
-newtype T r t = Cons { decons :: t } deriving (Eq, Functor, Show)
+newtype T r t = Cons { decons :: t } deriving
+  (Algebra.Additive.C, Algebra.Ring.C, Bits, Eq, FiniteBits, Functor, Show)
 
 logP :: Proxy r -> Proxy (CLog 2 r)
 logP _ = Proxy
@@ -40,38 +40,6 @@ divByR x = flip shiftR (fromInteger . natVal . logP . radixP $ x) <$> x
 
 modR :: (KnownNat r, Algebra.Ring.C t, FiniteBits t) => T r t -> T r t
 modR x = (.&.) (radix x - 1) <$> x
-
---
-
-instance (Applicative (T r)) where
-  pure = Cons
-  liftA2 f (Cons x) (Cons y) = Cons $ f x y
-
-instance (KnownNat r, 2 <= r, Algebra.Additive.C t, FiniteBits t) => (Algebra.Additive.C (T r t)) where
-  zero = pure zero
-  (+) = liftA2 (+)
-  negate = fmap negate
-
-instance (KnownNat r, 2 <= r, Algebra.Ring.C t, FiniteBits t) => (Algebra.Ring.C (T r t)) where
-  (*) = liftA2 (*)
-  fromInteger = pure . fromInteger
-
-instance (Bits t) => (Bits (T r t)) where
-  (.&.) = liftA2 (.&.)
-  (.|.) = liftA2 (.|.)
-  xor = liftA2 xor
-  complement = fmap complement
-  x `shift` i = flip shift i <$> x
-  x `rotate` i = flip rotate i <$> x
-  bitSize = bitSize . decons
-  bitSizeMaybe = bitSizeMaybe . decons
-  isSigned = isSigned . decons
-  testBit = testBit . decons
-  bit = Cons . bit
-  popCount = popCount . decons
-
-instance (FiniteBits t) => (FiniteBits (T r t)) where
-  finiteBitSize = finiteBitSize . decons
 
 --
 

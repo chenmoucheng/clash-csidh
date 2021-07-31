@@ -6,11 +6,10 @@ module PrimeField
   , genUnit
   ) where
 
-import           Prelude             (Integral, (<$>))
-import           Control.Applicative (Applicative(..))
-import           Data.Bits           (Bits(..), FiniteBits(..))
-import           Data.Proxy          (Proxy(..))
-import           GHC.TypeLits        (KnownNat, natVal)
+import           Prelude      (Integral)
+import           Data.Bits    (Bits(..), FiniteBits(..))
+import           Data.Proxy   (Proxy(..))
+import           GHC.TypeLits (KnownNat, natVal)
 
 import qualified Hedgehog as H
 import qualified Hedgehog.Gen as Gen
@@ -35,26 +34,8 @@ class (KnownNat p, KnownNat q, Algebra.Ring.C t, Eq t, FiniteBits t, Show t) => 
 
 --
 
-instance (Applicative W.T) where
-  pure = W.Cons
-  liftA2 f (W.Cons x) (W.Cons y) = W.Cons $ f x y
-
-instance (Bits t) => (Bits (W.T t)) where
-  (.&.) = liftA2 (.&.)
-  (.|.) = liftA2 (.|.)
-  xor = liftA2 xor
-  complement = fmap complement
-  x `shift` i = flip shift i <$> x
-  x `rotate` i = flip rotate i <$> x
-  bitSize = bitSize . W.decons
-  bitSizeMaybe = bitSizeMaybe . W.decons
-  isSigned = isSigned . W.decons
-  testBit = testBit . W.decons
-  bit = W.Cons . bit
-  popCount = popCount . W.decons
-
-instance (FiniteBits t) => (FiniteBits (W.T t)) where
-  finiteBitSize = finiteBitSize . W.decons
+deriving instance (Bits t) => (Bits (W.T t))
+deriving instance (FiniteBits t) => (FiniteBits (W.T t))
 
 instance (KnownNat p, KnownNat q, Integral t, Eq t, FiniteBits t, Show t) => (C p q (W.T t)) where
   x `into` (modP, _) = x `mod` fromInteger (natVal modP)

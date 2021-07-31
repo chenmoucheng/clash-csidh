@@ -12,7 +12,6 @@ common common-options
     ConstraintKinds
     DataKinds
     DefaultSignatures
-    DeriveAnyClass
     DeriveDataTypeable
     DeriveFoldable
     DeriveFunctor
@@ -22,6 +21,7 @@ common common-options
     DerivingStrategies
     FlexibleContexts
     FlexibleInstances
+    GeneralizedNewtypeDeriving
     InstanceSigs
     KindSignatures
     LambdaCase
