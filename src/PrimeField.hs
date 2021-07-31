@@ -1,6 +1,8 @@
 module PrimeField
   ( C(..)
   , T(..)
+  , euclidInverse
+  , fermatInverse
   , legendreSymbol
   , gen
   , genUnit
@@ -18,6 +20,7 @@ import qualified Hedgehog.Range as Range
 import           NumericPrelude
 import qualified Algebra.Additive
 import qualified Algebra.Field
+import qualified Algebra.IntegralDomain
 import qualified Algebra.Ring
 import qualified Algebra.ZeroTestable
 import qualified MathObj.Wrapper.Haskell98 as W
@@ -31,6 +34,7 @@ class (KnownNat p, KnownNat q, Algebra.Ring.C t, Eq t, FiniteBits t, Show t) => 
   outfrom :: t -> (Proxy p, Proxy q) -> t
   reduce1 :: t -> (Proxy p, Proxy q) -> t
   reduce2 :: t -> (Proxy p, Proxy q) -> t
+  inverse :: t -> (Proxy p, Proxy q) -> t
 
 --
 
@@ -42,6 +46,7 @@ instance (KnownNat p, KnownNat q, Integral t, Eq t, FiniteBits t, Show t) => (C 
   x `outfrom` _ = x
   reduce1 = into
   reduce2 = into
+  inverse = euclidInverse
 
 --
 
@@ -69,6 +74,10 @@ instance (C p q t) => (Algebra.Ring.C (T p q t)) where
     | i < 0 = negate . fromInteger $ -i
     | otherwise = let z = T $ fromInteger i `into` modulusPOf z in z
 
+instance (C p q t) => (Algebra.Field.C (T p q t)) where
+  recip (Algebra.ZeroTestable.isZero -> True) = error "divide by zero"
+  recip (T x) = let z = T $ x `inverse` modulusPOf z in z
+
 --
 
 toThePowerOf :: (C p q t) => T p q t -> t -> T p q t
@@ -76,9 +85,28 @@ toThePowerOf x = foldrBits sm s 1 where
   sm = (x *) . s
   s = Algebra.Ring.sqr
 
-instance (C p q t) => (Algebra.Field.C (T p q t)) where
-  recip 0 = error "divide by zero"
-  recip x = x `toThePowerOf` (modulusOf x - 2)
+euclidInverse :: (C p q t, Algebra.IntegralDomain.C t, Ord t) => t -> (Proxy p, Proxy q) -> t
+z `euclidInverse` (modP, _) = if z' > 0 then z' else z' + p where
+  xgcd x y
+    | x < 0 = let (g, (a, b)) = xgcd (-x) y in (g, (-a, b))
+    | y < 0 = let (g, (a, b)) = xgcd x (-y) in (g, (a, -b))
+    | x < y = let (g, (a, b)) = xgcd y x in (g, (b, a))
+    | y == 0 = (x, (1, 0))
+    | otherwise = let
+      (q, r) = x `divMod` y
+      (g, (a', b')) = xgcd y r
+      in (g, (b', a' - q * b'))
+  p = fromInteger (natVal modP)
+  (_, (z', _)) = xgcd z p
+
+fermatInverse :: (C p q t) => t -> (Proxy p, Proxy q) -> t
+x `fermatInverse` p = g z where
+  f :: (Proxy p, Proxy q) -> t -> T p q t
+  f _ = T
+  y = f p x
+  g :: T p q t -> t
+  g (T _x) = _x
+  z = y `toThePowerOf` (modulusOf y - 2)
 
 legendreSymbol :: (C p q t) => T p q t -> T p q t
 legendreSymbol 0 = 0

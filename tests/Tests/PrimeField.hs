@@ -19,8 +19,8 @@ import qualified PrimeField.Montgomery1
 
 type P = 113
 type P' = 111
-type R1 = W.T Word
-type R1' = W.T Int
+type R1 = W.T Int -- euclidInverse only works with signed store types
+type R1' = W.T Word
 
 instance Arbitrary (PrimeField.T P P' R1)  where arbitrary = hedgehog $ PrimeField.gen     @P @P' @R1  (Proxy, Proxy)
 instance Arbitrary (PrimeField.T P P' R1') where arbitrary = hedgehog $ PrimeField.genUnit @P @P' @R1' (Proxy, Proxy)

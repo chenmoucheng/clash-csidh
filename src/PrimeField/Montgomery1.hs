@@ -55,6 +55,7 @@ instance (KnownNat p, KnownNat q, KnownNat r, 2 <= r, Algebra.IntegralDomain.C t
     x' = divByR d
     p' = natVal auxP
     p = natVal modP
+  inverse = PrimeField.fermatInverse
 
 --
 
