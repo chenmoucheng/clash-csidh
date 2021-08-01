@@ -9,7 +9,6 @@ module PrimeField
   ) where
 
 import           Prelude      (Integral)
-import           Data.Bits    (Bits(..), FiniteBits(..))
 import           Data.Proxy   (Proxy(..))
 import           GHC.TypeLits (KnownNat, natVal)
 
@@ -25,11 +24,12 @@ import qualified Algebra.Ring
 import qualified Algebra.ZeroTestable
 import qualified MathObj.Wrapper.Haskell98 as W
 
-import           Utils (foldrBits)
+import           Clash.Prelude (BitPack)
+import           Utils         (floorDivByTwoToThePowerOf, foldrBits)
 
 -- $
 
-class (KnownNat p, KnownNat q, Algebra.Ring.C t, Eq t, FiniteBits t, Show t) => (C p q t) where
+class (KnownNat p, KnownNat q, Algebra.Ring.C t, BitPack t, Eq t, Show t) => (C p q t) where
   into :: t -> (Proxy p, Proxy q) -> t
   outfrom :: t -> (Proxy p, Proxy q) -> t
   reduce1 :: t -> (Proxy p, Proxy q) -> t
@@ -38,10 +38,9 @@ class (KnownNat p, KnownNat q, Algebra.Ring.C t, Eq t, FiniteBits t, Show t) => 
 
 --
 
-deriving instance (Bits t) => (Bits (W.T t))
-deriving instance (FiniteBits t) => (FiniteBits (W.T t))
+deriving instance (BitPack t) => (BitPack (W.T t))
 
-instance (KnownNat p, KnownNat q, Integral t, Eq t, FiniteBits t, Show t) => (C p q (W.T t)) where
+instance (KnownNat p, KnownNat q, BitPack t, Eq t, Integral t, Show t) => (C p q (W.T t)) where
   x `into` (modP, _) = x `mod` fromInteger (natVal modP)
   x `outfrom` _ = x
   reduce1 = into
@@ -50,7 +49,7 @@ instance (KnownNat p, KnownNat q, Integral t, Eq t, FiniteBits t, Show t) => (C 
 
 --
 
-newtype T p q t = T t deriving (Eq, Functor, Show)
+newtype T p q t = T t deriving (Eq, Show)
 
 modulusPOf :: T p q t -> (Proxy p, Proxy q)
 modulusPOf _ = (Proxy, Proxy)
@@ -110,7 +109,7 @@ x `fermatInverse` p = g z where
 
 legendreSymbol :: (C p q t) => T p q t -> T p q t
 legendreSymbol 0 = 0
-legendreSymbol x = x `toThePowerOf` (modulusOf x `shiftR` 1)
+legendreSymbol x = x `toThePowerOf` (modulusOf x `floorDivByTwoToThePowerOf` 1)
 
 --
 

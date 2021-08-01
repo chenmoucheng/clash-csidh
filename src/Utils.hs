@@ -1,10 +1,11 @@
 module Utils where
 
-import           Prelude   ()
 import           Data.Bits (Bits(..), FiniteBits(..))
 
 import           NumericPrelude
 import qualified Algebra.Ring
+
+import           Clash.Prelude (BitPack(..))
 
 -- $
 
@@ -23,12 +24,23 @@ compose (E f x) (E g y)
 
 --
 
-foldlBits :: (FiniteBits i) => (a -> a) -> (a -> a) -> a -> i -> a
-foldlBits t f z bv
-  | bv == zeroBits = z
-  | otherwise = foldlBits t f (if testBit bv 0 then t z else f z) $ bv `shiftR` 1
+floorDivByTwoToThePowerOf :: (BitPack t) => t -> Int -> t
+floorDivByTwoToThePowerOf x r = unpack . flip shiftR r . pack $ x
 
-foldrBits :: (FiniteBits i) => (a -> a) -> (a -> a) -> a -> i -> a
-foldrBits t f z bv = fst $ until g h (z, finiteBitSize bv - 1 - countLeadingZeros bv) where
+modTwoToThePowerOf :: (Algebra.Ring.C t, BitPack t) => t -> Int -> t
+modTwoToThePowerOf x r = unpack . (mask .&.) . pack $ x where
+  twoToThePowerOfR :: (Algebra.Ring.C t, BitPack t) => t -> t
+  twoToThePowerOfR _ = unpack $ bit r
+  mask = pack $ twoToThePowerOfR x - 1
+
+multByTwoToThePowerOf :: (BitPack t) => t -> Int -> t
+multByTwoToThePowerOf x r = unpack . flip shiftL r . pack $ x
+
+--
+
+foldrBits :: (BitPack t) => (a -> a) -> (a -> a) -> a -> t -> a
+foldrBits t f z b = fst $ until g h (z, bn) where
+  bv = pack b
   g (_, i) = i < 0
   h (x, i) = (if testBit bv i then t x else f x, i - 1)
+  bn = finiteBitSize bv - 1 - countLeadingZeros bv

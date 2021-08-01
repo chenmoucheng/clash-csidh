@@ -89,7 +89,7 @@ library
     PrimeField
     PrimeField.Montgomery1
   other-modules:
-    Isogeny
+    Csidh.Isogeny
     Utils
   default-language: Haskell2010
 

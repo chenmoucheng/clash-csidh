@@ -4,7 +4,6 @@ module PrimeField.Montgomery1
   ) where
 
 import           Prelude            ((<$>))
-import           Data.Bits          (Bits(..), FiniteBits(..))
 import           Data.Proxy         (Proxy(..))
 import           GHC.TypeLits       (KnownNat, natVal)
 import           GHC.TypeLits.Extra (type CLog)
@@ -16,12 +15,14 @@ import qualified Algebra.IntegralDomain
 import qualified Algebra.Laws
 import qualified Algebra.Ring
 
+import           Clash.Prelude (BitPack(..))
 import qualified PrimeField
+import           Utils         (floorDivByTwoToThePowerOf, modTwoToThePowerOf, multByTwoToThePowerOf)
 
 -- $
 
 newtype T r t = Cons { decons :: t } deriving
-  (Algebra.Additive.C, Algebra.Ring.C, Bits, Eq, FiniteBits, Functor, Show)
+  (Algebra.Additive.C, Algebra.Ring.C, BitPack, Eq, Functor, Show)
 
 logP :: Proxy r -> Proxy (CLog 2 r)
 logP _ = Proxy
@@ -29,21 +30,23 @@ logP _ = Proxy
 radixP :: T r t -> Proxy r
 radixP _ = Proxy
 
-radix :: (KnownNat r, Algebra.Ring.C t') => T r t -> t'
-radix = fromInteger . natVal . radixP
-
-multByR :: (KnownNat r, 2 <= r, FiniteBits t) => T r t -> T r t
-multByR x = flip shiftL (fromInteger . natVal . logP . radixP $ x) <$> x
-
-divByR :: (KnownNat r, 2 <= r, FiniteBits t) => T r t -> T r t
-divByR x = flip shiftR (fromInteger . natVal . logP . radixP $ x) <$> x
-
-modR :: (KnownNat r, Algebra.Ring.C t, FiniteBits t) => T r t -> T r t
-modR x = (.&.) (radix x - 1) <$> x
+logRadix :: (KnownNat r, 2 <= r) => T r t -> Int
+logRadix = fromInteger . natVal . logP . radixP
 
 --
 
-instance (KnownNat p, KnownNat q, KnownNat r, 2 <= r, Algebra.IntegralDomain.C t, Eq t, FiniteBits t, Ord t, Show t) => (PrimeField.C p q (T r t)) where
+divByR :: (KnownNat r, 2 <= r, BitPack t) => T r t -> T r t
+divByR x = flip floorDivByTwoToThePowerOf (logRadix x) <$> x
+
+modR :: (KnownNat r, 2 <= r, Algebra.Ring.C t, BitPack t) => T r t -> T r t
+modR x = flip modTwoToThePowerOf (logRadix x) <$> x
+
+multByR :: (KnownNat r, 2 <= r, BitPack t) => T r t -> T r t
+multByR x = flip multByTwoToThePowerOf (logRadix x) <$> x
+
+--
+
+instance (KnownNat p, KnownNat q, KnownNat r, 2 <= r, Algebra.IntegralDomain.C t, BitPack t, Eq t, Ord t, Show t) => (PrimeField.C p q (T r t)) where
   x `into` (modP, _) = Cons $ decons (multByR x) `mod` fromInteger (natVal modP)
   outfrom = PrimeField.reduce2
   (Cons x) `reduce1` (modP, _) = Cons $ if x < p then x else x - p where p = fromInteger (natVal modP)

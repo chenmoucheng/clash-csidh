@@ -13,8 +13,6 @@ module Csidh
   , prop_groupActionIsCommutative
   ) where
 
-import           Prelude      ()
-import           Data.Bits    (FiniteBits)
 import           GHC.TypeLits (KnownNat)
 
 import qualified Hedgehog as H
@@ -28,7 +26,7 @@ import qualified MathObj.Wrapper.Haskell98 as W
 import           Clash.Prelude (Vec((:>)))
 import qualified Clash.Prelude as C
 import qualified PrimeField
-import           Isogeny
+import           Csidh.Isogeny
 
 -- $
 
@@ -50,7 +48,7 @@ type K q t = PrimeField.T P q t
 --
 
 vectorMultiplicationWithCofactor
-  :: (KnownNat n, Algebra.Ring.C t, FiniteBits t, Algebra.Ring.C k, Eq k)
+  :: (KnownNat n, Algebra.Ring.C t, C.BitPack t, Eq t, Algebra.Ring.C k, Eq k)
   => (C.Vec n t, k, k, k, t) -> (k, k)
 vectorMultiplicationWithCofactor (ns, x, z, a, c) = C.foldl f (x0, z0) ns where
   (x0, z0) = scalarMultiplicationMontgomeryPlus (c, x, z, a)
