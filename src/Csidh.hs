@@ -28,7 +28,7 @@ import qualified MathObj.Wrapper.Haskell98 as W
 import           Clash.Prelude (Vec((:>)))
 import qualified Clash.Prelude as C
 import qualified PrimeField
-import           Csidh.Lib
+import           Isogeny
 
 -- $
 

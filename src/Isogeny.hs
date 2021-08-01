@@ -1,4 +1,4 @@
-module Csidh.Lib where
+module Isogeny where
 
 import           Prelude   ()
 import           Data.Bits (Bits(..), FiniteBits(..))
