@@ -11,7 +11,6 @@ import           GHC.TypeNats       (type (<=))
 
 import           NumericPrelude
 import qualified Algebra.Additive
-import qualified Algebra.IntegralDomain
 import qualified Algebra.Laws
 import qualified Algebra.Ring
 import qualified Algebra.ToInteger
@@ -22,7 +21,7 @@ import           Utils         (floorDivByTwoToThePowerOf, modulo, multByTwoToTh
 
 -- $
 
-newtype T r t = Cons { decons :: t } deriving (Algebra.Additive.C, Algebra.Ring.C, BitPack, Eq, Functor, Show)
+newtype T r t = Cons { decons :: t } deriving (Algebra.Additive.C, Algebra.Ring.C, BitPack, Eq, Functor, Ord, Show)
 
 radixP :: T r t -> Proxy r
 radixP _ = Proxy
@@ -41,24 +40,27 @@ divByR x = flip floorDivByTwoToThePowerOf (logRadix x) <$> x
 modR :: (KnownNat r, FLog 2 r ~ CLog 2 r, 2 <= r, Algebra.Ring.C t, BitPack t) => T r t -> T r t
 modR x = flip modulo (radixP x) <$> x
 
-multByR :: (KnownNat r, FLog 2 r ~ CLog 2 r, 2 <= r, BitPack t) => T r t -> T r t
-multByR x = flip multByTwoToThePowerOf (logRadix x) <$> x
-
 --
 
-instance (KnownNat p, KnownNat q, KnownNat r, FLog 2 r ~ CLog 2 r, 2 <= r, Algebra.IntegralDomain.C t, Algebra.ToInteger.C t, BitPack t, Eq t, Ord t, Show t) => (PrimeField.C p q (T r t)) where
+reduce1 :: (KnownNat p, Algebra.Ring.C t, Ord t) => T r t -> Proxy p -> T r t
+x `reduce1` modP = if x < p then x else x - p where p = fromInteger (natVal modP)
+
+reduce2 :: (KnownNat p, KnownNat q, KnownNat r, FLog 2 r ~ CLog 2 r, 2 <= r, Algebra.Ring.C t, BitPack t, Ord t) => T r t -> (Proxy p, Proxy q) -> T r t
+x `reduce2` (modP, auxP) = x' `reduce1` modP where
+  a = modR x
+  b = a * fromInteger p'
+  c = modR b
+  d = x + c * fromInteger p
+  x' = divByR d
+  p' = natVal auxP
+  p = natVal modP
+
+instance (KnownNat p, KnownNat q, KnownNat r, FLog 2 r ~ CLog 2 r, 2 <= r, Algebra.Ring.C t, Algebra.ToInteger.C t, BitPack t, Eq t, Ord t, Show t) => (PrimeField.C p q (T r t)) where
   x `into` (modP, _) = fromInteger $ x * natVal (Proxy :: Proxy r) `mod` natVal modP
-  outfrom = (toInteger . decons) `compose2` PrimeField.reduce2 where compose2 = (.) . (.)
-  (Cons x) `reduce1` (modP, _) = Cons $ if x < p then x else x - p where p = fromInteger (natVal modP)
-  x `reduce2` (modP, auxP) = x' `PrimeField.reduce1` (modP, auxP) where
-    a = modR x
-    b = a * fromInteger p'
-    c = modR b
-    d = x + c * fromInteger p
-    x' = divByR d
-    p' = natVal auxP
-    p = natVal modP
-  inverse = PrimeField.fermatInverse
+  outfrom = (toInteger . decons) `compose2` reduce2 where compose2 = (.) . (.)
+  (x, y) `addMod` (modP, _) = (x + y) `reduce1` modP
+  (x, y) `mulMod` (modP, auxP)= (x * y) `reduce2` (modP, auxP) `reduce1` modP
+  invMod = PrimeField.fermatInverse
 
 --
 

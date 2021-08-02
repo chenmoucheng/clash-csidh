@@ -32,9 +32,9 @@ import           Utils         (floorDivByTwoToThePowerOf, foldrBits)
 class (KnownNat p, KnownNat q, Algebra.Ring.C t, BitPack t, Eq t, Show t) => (C p q t) where
   into :: Integer -> (Proxy p, Proxy q) -> t
   outfrom :: t -> (Proxy p, Proxy q) -> Integer
-  reduce1 :: t -> (Proxy p, Proxy q) -> t
-  reduce2 :: t -> (Proxy p, Proxy q) -> t
-  inverse :: t -> (Proxy p, Proxy q) -> t
+  addMod :: (t, t) -> (Proxy p, Proxy q) -> t
+  mulMod :: (t, t) -> (Proxy p, Proxy q) -> t
+  invMod :: t -> (Proxy p, Proxy q) -> t
 
 --
 
@@ -43,9 +43,9 @@ deriving instance (BitPack t) => (BitPack (W.T t))
 instance (KnownNat p, KnownNat q, BitPack t, Eq t, Integral t, Show t) => (C p q (W.T t)) where
   x `into` (modP, _) = fromInteger $ x `mod` natVal modP
   x `outfrom` _ = toInteger x
-  x `reduce1` (modP, _) = x `mod` fromInteger (natVal modP)
-  reduce2 = reduce1
-  inverse = euclidInverse
+  (x, y) `addMod` (modP, _) = (x + y) `mod` fromInteger (natVal modP)
+  (x, y) `mulMod` (modP, _) = (x * y) `mod` fromInteger (natVal modP)
+  invMod = euclidInverse
 
 --
 
@@ -64,18 +64,18 @@ instance (C p q t) => (Algebra.ZeroTestable.C (T p q t)) where
 
 instance (C p q t) => (Algebra.Additive.C (T p q t)) where
   zero = T zero
-  (T x) + (T y) = let z = T $ (x + y) `reduce1` modulusPOf z in z
+  (T x) + (T y) = let z = T $ (x, y) `addMod` modulusPOf z in z
   negate (T x) = let z = T $ modulusOf z - x in z
 
 instance (C p q t) => (Algebra.Ring.C (T p q t)) where
-  (T x) * (T y) = let z = T $ (x * y) `reduce2` modulusPOf z in z
+  (T x) * (T y) = let z = T $ (x, y) `mulMod` modulusPOf z in z
   fromInteger i
     | i < 0 = negate . fromInteger $ -i
-    | otherwise = let z = T $ fromInteger i `into` modulusPOf z in z
+    | otherwise = let z = T $ i `into` modulusPOf z in z
 
 instance (C p q t) => (Algebra.Field.C (T p q t)) where
   recip (Algebra.ZeroTestable.isZero -> True) = error "divide by zero"
-  recip (T x) = let z = T $ x `inverse` modulusPOf z in z
+  recip (T x) = let z = T $ x `invMod` modulusPOf z in z
 
 --
 
