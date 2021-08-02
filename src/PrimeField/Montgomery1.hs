@@ -7,13 +7,14 @@ import           Prelude            ((<$>))
 import           Data.Proxy         (Proxy(..))
 import           GHC.TypeLits       (KnownNat, natVal)
 import           GHC.TypeLits.Extra (type CLog, FLog, Log)
-import           GHC.TypeNats       (type (-), type (<=))
+import           GHC.TypeNats       (type (<=))
 
 import           NumericPrelude
 import qualified Algebra.Additive
 import qualified Algebra.IntegralDomain
 import qualified Algebra.Laws
 import qualified Algebra.Ring
+import qualified Algebra.ToInteger
 
 import           Clash.Prelude (BitPack(..))
 import qualified PrimeField
@@ -45,9 +46,9 @@ multByR x = flip multByTwoToThePowerOf (logRadix x) <$> x
 
 --
 
-instance (KnownNat p, KnownNat q, KnownNat r, FLog 2 r ~ CLog 2 r, 2 <= r, Algebra.IntegralDomain.C t, BitPack t, Eq t, Ord t, Show t) => (PrimeField.C p q (T r t)) where
-  x `into` (modP, _) = Cons $ decons (multByR x) `mod` fromInteger (natVal modP)
-  outfrom = PrimeField.reduce2
+instance (KnownNat p, KnownNat q, KnownNat r, FLog 2 r ~ CLog 2 r, 2 <= r, Algebra.IntegralDomain.C t, Algebra.ToInteger.C t, BitPack t, Eq t, Ord t, Show t) => (PrimeField.C p q (T r t)) where
+  x `into` (modP, _) = fromInteger $ x * natVal (Proxy :: Proxy r) `mod` natVal modP
+  outfrom = (toInteger . decons) `compose2` PrimeField.reduce2 where compose2 = (.) . (.)
   (Cons x) `reduce1` (modP, _) = Cons $ if x < p then x else x - p where p = fromInteger (natVal modP)
   x `reduce2` (modP, auxP) = x' `PrimeField.reduce1` (modP, auxP) where
     a = modR x
@@ -67,5 +68,5 @@ prop_homomorphism
   -> (PrimeField.T p q t -> PrimeField.T p q t -> PrimeField.T p q t)
   -> (PrimeField.T p q (T r t) -> PrimeField.T p q (T r t) -> PrimeField.T p q (T r t))
   -> PrimeField.T p q t -> PrimeField.T p q t -> Bool
-prop_homomorphism modP = Algebra.Laws.homomorphism phi where
-  phi (PrimeField.T x) = PrimeField.T $ Cons (x `PrimeField.outfrom` modP) `PrimeField.into` modP
+prop_homomorphism proxies = Algebra.Laws.homomorphism phi where
+  phi = fmap $ flip PrimeField.into proxies . flip PrimeField.outfrom proxies

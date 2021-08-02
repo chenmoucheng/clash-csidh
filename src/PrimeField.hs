@@ -30,8 +30,8 @@ import           Utils         (floorDivByTwoToThePowerOf, foldrBits)
 -- $
 
 class (KnownNat p, KnownNat q, Algebra.Ring.C t, BitPack t, Eq t, Show t) => (C p q t) where
-  into :: t -> (Proxy p, Proxy q) -> t
-  outfrom :: t -> (Proxy p, Proxy q) -> t
+  into :: Integer -> (Proxy p, Proxy q) -> t
+  outfrom :: t -> (Proxy p, Proxy q) -> Integer
   reduce1 :: t -> (Proxy p, Proxy q) -> t
   reduce2 :: t -> (Proxy p, Proxy q) -> t
   inverse :: t -> (Proxy p, Proxy q) -> t
@@ -41,15 +41,15 @@ class (KnownNat p, KnownNat q, Algebra.Ring.C t, BitPack t, Eq t, Show t) => (C 
 deriving instance (BitPack t) => (BitPack (W.T t))
 
 instance (KnownNat p, KnownNat q, BitPack t, Eq t, Integral t, Show t) => (C p q (W.T t)) where
-  x `into` (modP, _) = x `mod` fromInteger (natVal modP)
-  x `outfrom` _ = x
-  reduce1 = into
-  reduce2 = into
+  x `into` (modP, _) = fromInteger $ x `mod` natVal modP
+  x `outfrom` _ = toInteger x
+  x `reduce1` (modP, _) = x `mod` fromInteger (natVal modP)
+  reduce2 = reduce1
   inverse = euclidInverse
 
 --
 
-newtype T p q t = T t deriving (Eq, Show)
+newtype T p q t = T t deriving (Eq, Functor, Show)
 
 modulusPOf :: T p q t -> (Proxy p, Proxy q)
 modulusPOf _ = (Proxy, Proxy)
