@@ -28,13 +28,13 @@ compose (E f x) (E g y)
 
 --
 
-floorDivByTwoToThePowerOf :: (BitPack t) => t -> Int -> t
+floorDivByTwoToThePowerOf :: (BitPack a) => a -> Int -> a
 floorDivByTwoToThePowerOf x r = unpack . flip shiftR r . pack $ x
 
-modulo :: forall r t. (KnownNat r, FLog 2 r ~ CLog 2 r, 2 <= r, Algebra.Ring.C t, BitPack t) => t -> Proxy r -> t
-modulo x _ = unpack . (pack x .&.) . pack . fromInteger @t $ natVal (Proxy :: Proxy (r - 1))
+modulo :: forall r a. (KnownNat r, FLog 2 r ~ CLog 2 r, 2 <= r, Algebra.Ring.C a, BitPack a) => a -> Proxy r -> a
+modulo x _ = unpack . (pack x .&.) . pack . fromInteger @a $ natVal (Proxy :: Proxy (r - 1))
 
-multByTwoToThePowerOf :: (BitPack t) => t -> Int -> t
+multByTwoToThePowerOf :: (BitPack a) => a -> Int -> a
 multByTwoToThePowerOf x r = unpack . flip shiftL r . pack $ x
 
 --

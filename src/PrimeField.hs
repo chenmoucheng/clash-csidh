@@ -21,6 +21,7 @@ import qualified Algebra.Additive
 import qualified Algebra.Field
 import qualified Algebra.IntegralDomain
 import qualified Algebra.Ring
+import qualified Algebra.ToInteger
 import qualified Algebra.ZeroTestable
 import qualified MathObj.Wrapper.Haskell98 as W
 
@@ -29,7 +30,7 @@ import           Utils         (floorDivByTwoToThePowerOf, foldrBits)
 
 -- $
 
-class (KnownNat p, KnownNat q, Algebra.Ring.C t, BitPack t, Eq t, Show t) => (C p q t) where
+class (KnownNat p, KnownNat q, Algebra.Ring.C t, Algebra.ToInteger.C t, BitPack t, Eq t, Show t) => (C p q t) where
   into :: Integer -> (Proxy p, Proxy q) -> t
   outfrom :: t -> (Proxy p, Proxy q) -> Integer
   addMod :: (t, t) -> (Proxy p, Proxy q) -> t
@@ -59,8 +60,7 @@ modulusOf = fromInteger . natVal . fst . modulusPOf
 
 --
 
-instance (C p q t) => (Algebra.ZeroTestable.C (T p q t)) where
-  isZero = Algebra.ZeroTestable.defltIsZero
+deriving instance (C p q t) => (Algebra.ZeroTestable.C (T p q t))
 
 instance (C p q t) => (Algebra.Additive.C (T p q t)) where
   zero = T zero

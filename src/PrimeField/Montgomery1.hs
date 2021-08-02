@@ -10,18 +10,36 @@ import           GHC.TypeLits.Extra (type CLog, FLog, Log)
 import           GHC.TypeNats       (type (<=))
 
 import           NumericPrelude
+import qualified Algebra.Absolute
 import qualified Algebra.Additive
+import qualified Algebra.IntegralDomain
 import qualified Algebra.Laws
+import qualified Algebra.RealIntegral
 import qualified Algebra.Ring
 import qualified Algebra.ToInteger
+import qualified Algebra.ToRational
+import qualified Algebra.ZeroTestable
 
 import           Clash.Prelude (BitPack(..))
 import qualified PrimeField
-import           Utils         (floorDivByTwoToThePowerOf, modulo, multByTwoToThePowerOf)
+import           Utils         (floorDivByTwoToThePowerOf, modulo)
 
 -- $
 
-newtype T r t = Cons { decons :: t } deriving (Algebra.Additive.C, Algebra.Ring.C, BitPack, Eq, Functor, Ord, Show)
+class (KnownNat r, FLog 2 r ~ CLog 2 r, 2 <= r, Algebra.Ring.C t, Algebra.ToInteger.C t, BitPack t, Eq t, Ord t, Show t) => (C r t)
+
+--
+
+newtype T r t = Cons { decons :: t } deriving (BitPack, Eq, Functor, Ord, Show)
+
+deriving instance (C r t) => (Algebra.Absolute.C       (T r t))
+deriving instance (C r t) => (Algebra.Additive.C       (T r t))
+deriving instance (C r t) => (Algebra.IntegralDomain.C (T r t))
+deriving instance (C r t) => (Algebra.RealIntegral.C   (T r t))
+deriving instance (C r t) => (Algebra.Ring.C           (T r t))
+deriving instance (C r t) => (Algebra.ToInteger.C      (T r t))
+deriving instance (C r t) => (Algebra.ToRational.C     (T r t))
+deriving instance (C r t) => (Algebra.ZeroTestable.C   (T r t))
 
 radixP :: T r t -> Proxy r
 radixP _ = Proxy
@@ -42,10 +60,10 @@ modR x = flip modulo (radixP x) <$> x
 
 --
 
-reduce1 :: (KnownNat p, Algebra.Ring.C t, Ord t) => T r t -> Proxy p -> T r t
+reduce1 :: (KnownNat p, C r t) => T r t -> Proxy p -> T r t
 x `reduce1` modP = if x < p then x else x - p where p = fromInteger (natVal modP)
 
-reduce2 :: (KnownNat p, KnownNat q, KnownNat r, FLog 2 r ~ CLog 2 r, 2 <= r, Algebra.Ring.C t, BitPack t, Ord t) => T r t -> (Proxy p, Proxy q) -> T r t
+reduce2 :: (KnownNat p, KnownNat q, C r t) => T r t -> (Proxy p, Proxy q) -> T r t
 x `reduce2` (modP, auxP) = x' `reduce1` modP where
   a = modR x
   b = a * fromInteger p'
@@ -55,11 +73,11 @@ x `reduce2` (modP, auxP) = x' `reduce1` modP where
   p' = natVal auxP
   p = natVal modP
 
-instance (KnownNat p, KnownNat q, KnownNat r, FLog 2 r ~ CLog 2 r, 2 <= r, Algebra.Ring.C t, Algebra.ToInteger.C t, BitPack t, Eq t, Ord t, Show t) => (PrimeField.C p q (T r t)) where
+instance (KnownNat p, KnownNat q, C r t) => (PrimeField.C p q (T r t)) where
   x `into` (modP, _) = fromInteger $ x * natVal (Proxy :: Proxy r) `mod` natVal modP
   outfrom = (toInteger . decons) `compose2` reduce2 where compose2 = (.) . (.)
-  (x, y) `addMod` (modP, _) = (x + y) `reduce1` modP
-  (x, y) `mulMod` (modP, auxP)= (x * y) `reduce2` (modP, auxP) `reduce1` modP
+  addMod (x, y) = reduce1 (x + y) . fst
+  mulMod (x, y) = reduce2 (x * y)
   invMod = PrimeField.fermatInverse
 
 --
