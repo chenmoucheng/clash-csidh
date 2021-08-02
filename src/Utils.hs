@@ -27,11 +27,8 @@ compose (E f x) (E g y)
 floorDivByTwoToThePowerOf :: (BitPack t) => t -> Int -> t
 floorDivByTwoToThePowerOf x r = unpack . flip shiftR r . pack $ x
 
-modTwoToThePowerOf :: (Algebra.Ring.C t, BitPack t) => t -> Int -> t
-modTwoToThePowerOf x r = unpack . (mask .&.) . pack $ x where
-  twoToThePowerOfR :: (Algebra.Ring.C t, BitPack t) => t -> t
-  twoToThePowerOfR _ = unpack $ bit r
-  mask = pack $ twoToThePowerOfR x - 1
+modTwosPower :: (BitPack t) => t -> t -> t
+modTwosPower x = unpack . (pack x .&.) . pack where
 
 multByTwoToThePowerOf :: (BitPack t) => t -> Int -> t
 multByTwoToThePowerOf x r = unpack . flip shiftL r . pack $ x

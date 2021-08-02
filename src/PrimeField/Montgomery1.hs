@@ -6,8 +6,8 @@ module PrimeField.Montgomery1
 import           Prelude            ((<$>))
 import           Data.Proxy         (Proxy(..))
 import           GHC.TypeLits       (KnownNat, natVal)
-import           GHC.TypeLits.Extra (type CLog)
-import           GHC.TypeNats       (type (<=))
+import           GHC.TypeLits.Extra (type CLog, FLog, Log)
+import           GHC.TypeNats       (type (-), type (<=))
 
 import           NumericPrelude
 import qualified Algebra.Additive
@@ -17,36 +17,41 @@ import qualified Algebra.Ring
 
 import           Clash.Prelude (BitPack(..))
 import qualified PrimeField
-import           Utils         (floorDivByTwoToThePowerOf, modTwoToThePowerOf, multByTwoToThePowerOf)
+import           Utils         (floorDivByTwoToThePowerOf, modTwosPower, multByTwoToThePowerOf)
 
 -- $
 
-newtype T r t = Cons { decons :: t } deriving
-  (Algebra.Additive.C, Algebra.Ring.C, BitPack, Eq, Functor, Show)
-
-logP :: Proxy r -> Proxy (CLog 2 r)
-logP _ = Proxy
+newtype T r t = Cons { decons :: t } deriving (Algebra.Additive.C, Algebra.Ring.C, BitPack, Eq, Functor, Show)
 
 radixP :: T r t -> Proxy r
 radixP _ = Proxy
 
-logRadix :: (KnownNat r, 2 <= r) => T r t -> Int
+radixMinus1P :: (KnownNat r, FLog 2 r ~ CLog 2 r, 2 <= r) => T r t -> Proxy (r - 1)
+radixMinus1P _ = Proxy
+
+radixMinus1 :: (KnownNat r, FLog 2 r ~ CLog 2 r, 2 <= r, Algebra.Ring.C t) => T r t -> t
+radixMinus1 = fromInteger . natVal . radixMinus1P
+
+logP :: Proxy r -> Proxy (Log 2 r)
+logP _ = Proxy
+
+logRadix :: (KnownNat r, FLog 2 r ~ CLog 2 r, 2 <= r) => T r t -> Int
 logRadix = fromInteger . natVal . logP . radixP
 
 --
 
-divByR :: (KnownNat r, 2 <= r, BitPack t) => T r t -> T r t
+divByR :: (KnownNat r, FLog 2 r ~ CLog 2 r, 2 <= r, BitPack t) => T r t -> T r t
 divByR x = flip floorDivByTwoToThePowerOf (logRadix x) <$> x
 
-modR :: (KnownNat r, 2 <= r, Algebra.Ring.C t, BitPack t) => T r t -> T r t
-modR x = flip modTwoToThePowerOf (logRadix x) <$> x
+modR :: (KnownNat r, FLog 2 r ~ CLog 2 r, 2 <= r, Algebra.Ring.C t, BitPack t) => T r t -> T r t
+modR x = flip modTwosPower (radixMinus1 x) <$> x
 
-multByR :: (KnownNat r, 2 <= r, BitPack t) => T r t -> T r t
+multByR :: (KnownNat r, FLog 2 r ~ CLog 2 r, 2 <= r, BitPack t) => T r t -> T r t
 multByR x = flip multByTwoToThePowerOf (logRadix x) <$> x
 
 --
 
-instance (KnownNat p, KnownNat q, KnownNat r, 2 <= r, Algebra.IntegralDomain.C t, BitPack t, Eq t, Ord t, Show t) => (PrimeField.C p q (T r t)) where
+instance (KnownNat p, KnownNat q, KnownNat r, FLog 2 r ~ CLog 2 r, 2 <= r, Algebra.IntegralDomain.C t, BitPack t, Eq t, Ord t, Show t) => (PrimeField.C p q (T r t)) where
   x `into` (modP, _) = Cons $ decons (multByR x) `mod` fromInteger (natVal modP)
   outfrom = PrimeField.reduce2
   (Cons x) `reduce1` (modP, _) = Cons $ if x < p then x else x - p where p = fromInteger (natVal modP)
@@ -65,8 +70,8 @@ instance (KnownNat p, KnownNat q, KnownNat r, 2 <= r, Algebra.IntegralDomain.C t
 prop_homomorphism
   :: (PrimeField.C p q t, PrimeField.C p q (T r t))
   => (Proxy p, Proxy q)
-  -> (PrimeField.T p q (T r t) -> PrimeField.T p q (T r t) -> PrimeField.T p q (T r t))
   -> (PrimeField.T p q t -> PrimeField.T p q t -> PrimeField.T p q t)
-  -> PrimeField.T p q (T r t) -> PrimeField.T p q (T r t) -> Bool
+  -> (PrimeField.T p q (T r t) -> PrimeField.T p q (T r t) -> PrimeField.T p q (T r t))
+  -> PrimeField.T p q t -> PrimeField.T p q t -> Bool
 prop_homomorphism modP = Algebra.Laws.homomorphism phi where
-  phi (PrimeField.T x) = PrimeField.T $ decons (x `PrimeField.outfrom` modP) `PrimeField.into` modP
+  phi (PrimeField.T x) = PrimeField.T $ Cons (x `PrimeField.outfrom` modP) `PrimeField.into` modP

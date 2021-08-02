@@ -17,15 +17,15 @@ import qualified PrimeField
 
 --
 
-prop_outfromIsAdditiveHomomorphic :: H.Property
-prop_outfromIsAdditiveHomomorphic =
+prop_additiveHomomorphism :: H.Property
+prop_additiveHomomorphism =
   H.property $ do
     x <- H.forAll $ PrimeField.gen (Proxy, Proxy)
     y <- H.forAll $ PrimeField.gen (Proxy, Proxy)
     H.assert $ PrimeField.Montgomery1.prop_homomorphism @113 @111 @(W.T Word) @128 (Proxy, Proxy) (+) (+) x y
 
-prop_outfromIsMultiplicativeHomomorphic :: H.Property
-prop_outfromIsMultiplicativeHomomorphic =
+prop_multiplicativeHomomorphism :: H.Property
+prop_multiplicativeHomomorphism =
   H.property $ do
     x <- H.forAll $ PrimeField.genUnit (Proxy, Proxy)
     y <- H.forAll $ PrimeField.genUnit (Proxy, Proxy)

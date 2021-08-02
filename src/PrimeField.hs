@@ -54,7 +54,7 @@ newtype T p q t = T t deriving (Eq, Show)
 modulusPOf :: T p q t -> (Proxy p, Proxy q)
 modulusPOf _ = (Proxy, Proxy)
 
-modulusOf :: (KnownNat p, KnownNat q, Algebra.Ring.C t) => T p q t -> t
+modulusOf :: (KnownNat p, Algebra.Ring.C t) => T p q t -> t
 modulusOf = fromInteger . natVal . fst . modulusPOf
 
 --

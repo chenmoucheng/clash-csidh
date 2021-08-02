@@ -7,7 +7,6 @@ import Test.Tasty
 import Test.Tasty.QuickCheck
 import Test.QuickCheck.Hedgehog
 
-import qualified NumericPrelude
 import qualified Algebra.Field
 import qualified Algebra.Ring
 import qualified MathObj.Wrapper.Haskell98 as W
@@ -25,7 +24,7 @@ type R1' = W.T Word
 instance Arbitrary (PrimeField.T P P' R1)  where arbitrary = hedgehog $ PrimeField.gen     @P @P' @R1  (Proxy, Proxy)
 instance Arbitrary (PrimeField.T P P' R1') where arbitrary = hedgehog $ PrimeField.genUnit @P @P' @R1' (Proxy, Proxy)
 
-type R2 = PrimeField.Montgomery1.T 128 NumericPrelude.Int
+type R2 = PrimeField.Montgomery1.T 128 (W.T Word)
 instance Arbitrary (PrimeField.T P P' R2) where arbitrary = hedgehog $ PrimeField.genUnit @P @P' @R2 (Proxy, Proxy)
 
 tests :: TestTree
