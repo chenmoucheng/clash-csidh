@@ -1,6 +1,10 @@
 module Utils where
 
-import           Data.Bits (Bits(..), FiniteBits(..))
+import           Data.Bits          (Bits(..), FiniteBits(..))
+import           Data.Proxy         (Proxy(..))
+import           GHC.TypeLits       (KnownNat, natVal)
+import           GHC.TypeLits.Extra (CLog, FLog)
+import           GHC.TypeNats       (type (-), type (<=))
 
 import           NumericPrelude
 import qualified Algebra.Ring
@@ -27,8 +31,8 @@ compose (E f x) (E g y)
 floorDivByTwoToThePowerOf :: (BitPack t) => t -> Int -> t
 floorDivByTwoToThePowerOf x r = unpack . flip shiftR r . pack $ x
 
-modTwosPower :: (BitPack t) => t -> t -> t
-modTwosPower x = unpack . (pack x .&.) . pack where
+modulo :: forall r t. (KnownNat r, FLog 2 r ~ CLog 2 r, 2 <= r, Algebra.Ring.C t, BitPack t) => t -> Proxy r -> t
+modulo x _ = unpack . (pack x .&.) . pack . fromInteger @t $ natVal (Proxy :: Proxy (r - 1))
 
 multByTwoToThePowerOf :: (BitPack t) => t -> Int -> t
 multByTwoToThePowerOf x r = unpack . flip shiftL r . pack $ x

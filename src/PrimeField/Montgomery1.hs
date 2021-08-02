@@ -17,7 +17,7 @@ import qualified Algebra.Ring
 
 import           Clash.Prelude (BitPack(..))
 import qualified PrimeField
-import           Utils         (floorDivByTwoToThePowerOf, modTwosPower, multByTwoToThePowerOf)
+import           Utils         (floorDivByTwoToThePowerOf, modulo, multByTwoToThePowerOf)
 
 -- $
 
@@ -25,12 +25,6 @@ newtype T r t = Cons { decons :: t } deriving (Algebra.Additive.C, Algebra.Ring.
 
 radixP :: T r t -> Proxy r
 radixP _ = Proxy
-
-radixMinus1P :: (KnownNat r, FLog 2 r ~ CLog 2 r, 2 <= r) => T r t -> Proxy (r - 1)
-radixMinus1P _ = Proxy
-
-radixMinus1 :: (KnownNat r, FLog 2 r ~ CLog 2 r, 2 <= r, Algebra.Ring.C t) => T r t -> t
-radixMinus1 = fromInteger . natVal . radixMinus1P
 
 logP :: Proxy r -> Proxy (Log 2 r)
 logP _ = Proxy
@@ -44,7 +38,7 @@ divByR :: (KnownNat r, FLog 2 r ~ CLog 2 r, 2 <= r, BitPack t) => T r t -> T r t
 divByR x = flip floorDivByTwoToThePowerOf (logRadix x) <$> x
 
 modR :: (KnownNat r, FLog 2 r ~ CLog 2 r, 2 <= r, Algebra.Ring.C t, BitPack t) => T r t -> T r t
-modR x = flip modTwosPower (radixMinus1 x) <$> x
+modR x = flip modulo (radixP x) <$> x
 
 multByR :: (KnownNat r, FLog 2 r ~ CLog 2 r, 2 <= r, BitPack t) => T r t -> T r t
 multByR x = flip multByTwoToThePowerOf (logRadix x) <$> x

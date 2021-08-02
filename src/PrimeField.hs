@@ -98,14 +98,10 @@ z `euclidInverse` (modP, _) = if z' > 0 then z' else z' + p where
   p = fromInteger (natVal modP)
   (_, (z', _)) = xgcd z p
 
-fermatInverse :: (C p q t) => t -> (Proxy p, Proxy q) -> t
-x `fermatInverse` p = g z where
-  f :: (Proxy p, Proxy q) -> t -> T p q t
-  f _ = T
-  y = f p x
-  g :: T p q t -> t
-  g (T _x) = _x
-  z = y `toThePowerOf` (modulusOf y - 2)
+fermatInverse :: forall p q t. (C p q t) => t -> (Proxy p, Proxy q) -> t
+x `fermatInverse` _ = f z where
+  f (T _x) = _x
+  z = T @p @q @t x `toThePowerOf` (modulusOf z - 2)
 
 legendreSymbol :: (C p q t) => T p q t -> T p q t
 legendreSymbol 0 = 0
