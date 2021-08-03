@@ -11,6 +11,7 @@ module PrimeField
 import           Prelude      (Integral)
 import           Data.Proxy   (Proxy(..))
 import           GHC.TypeLits (KnownNat, natVal)
+import           GHC.TypeNats (type (-), type (<=))
 
 import qualified Hedgehog as H
 import qualified Hedgehog.Gen as Gen
@@ -21,31 +22,29 @@ import qualified Algebra.Additive
 import qualified Algebra.Field
 import qualified Algebra.IntegralDomain
 import qualified Algebra.Ring
-import qualified Algebra.ToInteger
 import qualified Algebra.ZeroTestable
 import qualified MathObj.Wrapper.Haskell98 as W
 
 import           Clash.Prelude (BitPack)
-import           Utils         (floorDivByTwoToThePowerOf, foldrBits)
+import           Radix         (floorDivBy)
+import           Utils         (foldrBits)
 
 -- $
 
-class (KnownNat p, KnownNat q, Algebra.Ring.C t, Algebra.ToInteger.C t, BitPack t, Eq t, Show t) => (C p q t) where
+class (KnownNat p, 2 <= p, KnownNat q, Algebra.Ring.C t, Algebra.ZeroTestable.C t, BitPack t, Eq t, Show t) => (C p q t) where
   into :: Integer -> (Proxy p, Proxy q) -> t
   outfrom :: t -> (Proxy p, Proxy q) -> Integer
   addMod :: (t, t) -> (Proxy p, Proxy q) -> t
   mulMod :: (t, t) -> (Proxy p, Proxy q) -> t
   invMod :: t -> (Proxy p, Proxy q) -> t
 
---
-
 deriving instance (BitPack t) => (BitPack (W.T t))
 
-instance (KnownNat p, KnownNat q, BitPack t, Eq t, Integral t, Show t) => (C p q (W.T t)) where
-  x `into` (modP, _) = fromInteger $ x `mod` natVal modP
-  x `outfrom` _ = toInteger x
-  (x, y) `addMod` (modP, _) = (x + y) `mod` fromInteger (natVal modP)
-  (x, y) `mulMod` (modP, _) = (x * y) `mod` fromInteger (natVal modP)
+instance (KnownNat p, 2 <= p, KnownNat q, Integral t, BitPack t, Eq t, Show t) => (C p q (W.T t)) where
+  into x _ = fromInteger $ x `mod` natVal @p Proxy
+  outfrom x _ = toInteger x
+  addMod (x, y) _ = (x + y) `mod` fromInteger (natVal @p Proxy)
+  mulMod (x, y) _ = (x * y) `mod` fromInteger (natVal @p Proxy)
   invMod = euclidInverse
 
 --
@@ -84,8 +83,8 @@ toThePowerOf x = foldrBits sm s 1 where
   sm = (x *) . s
   s = Algebra.Ring.sqr
 
-euclidInverse :: (C p q t, Algebra.IntegralDomain.C t, Ord t) => t -> (Proxy p, Proxy q) -> t
-z `euclidInverse` (modP, _) = if z' > 0 then z' else z' + p where
+euclidInverse :: forall p q t. (C p q t, Algebra.IntegralDomain.C t, Ord t) => t -> (Proxy p, Proxy q) -> t
+euclidInverse z _ = if z' > 0 then z' else z' + p where
   xgcd x y
     | x < 0 = let (g, (a, b)) = xgcd (-x) y in (g, (-a, b))
     | y < 0 = let (g, (a, b)) = xgcd x (-y) in (g, (a, -b))
@@ -95,26 +94,26 @@ z `euclidInverse` (modP, _) = if z' > 0 then z' else z' + p where
       (q, r) = x `divMod` y
       (g, (a', b')) = xgcd y r
       in (g, (b', a' - q * b'))
-  p = fromInteger (natVal modP)
+  p = fromInteger (natVal @p Proxy)
   (_, (z', _)) = xgcd z p
 
 fermatInverse :: forall p q t. (C p q t) => t -> (Proxy p, Proxy q) -> t
-x `fermatInverse` _ = f z where
+fermatInverse x _ = f z where
   f (T _x) = _x
   z = T @p @q @t x `toThePowerOf` (modulusOf z - 2)
 
 legendreSymbol :: (C p q t) => T p q t -> T p q t
 legendreSymbol 0 = 0
-legendreSymbol x = x `toThePowerOf` (modulusOf x `floorDivByTwoToThePowerOf` 1)
+legendreSymbol x = x `toThePowerOf` (modulusOf x `floorDivBy` (Proxy :: Proxy 2))
 
 --
 
-gen :: (C p q t, H.MonadGen m) => (Proxy p, Proxy q) -> m (T p q t)
-gen (modP, _) = do
-  x <- Gen.integral $ Range.linear 0 (natVal modP - 1)
+gen :: forall p q t m. (C p q t, H.MonadGen m) => (Proxy p, Proxy q) -> m (T p q t)
+gen _ = do
+  x <- Gen.integral $ Range.linear 0 (natVal @(p - 1) Proxy)
   return $ fromInteger x
 
-genUnit :: (C p q t, H.MonadGen m) => (Proxy p, Proxy q) -> m (T p q t)
-genUnit (modP, _) = do
-  x <- Gen.integral $ Range.linear 1 (natVal modP - 1)
+genUnit :: forall p q t m. (C p q t, H.MonadGen m) => (Proxy p, Proxy q) -> m (T p q t)
+genUnit _ = do
+  x <- Gen.integral $ Range.linear 1 (natVal @(p - 1) Proxy)
   return $ fromInteger x

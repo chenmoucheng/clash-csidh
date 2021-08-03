@@ -1,10 +1,6 @@
 module Utils where
 
-import           Data.Bits          (Bits(..), FiniteBits(..))
-import           Data.Proxy         (Proxy(..))
-import           GHC.TypeLits       (KnownNat, natVal)
-import           GHC.TypeLits.Extra (CLog, FLog)
-import           GHC.TypeNats       (type (-), type (<=))
+import           Data.Bits (Bits(..), FiniteBits(..))
 
 import           NumericPrelude
 import qualified Algebra.Ring
@@ -28,20 +24,9 @@ compose (E f x) (E g y)
 
 --
 
-floorDivByTwoToThePowerOf :: (BitPack a) => a -> Int -> a
-floorDivByTwoToThePowerOf x r = unpack . flip shiftR r . pack $ x
-
-modulo :: forall r a. (KnownNat r, FLog 2 r ~ CLog 2 r, 2 <= r, Algebra.Ring.C a, BitPack a) => a -> Proxy r -> a
-modulo x _ = unpack . (pack x .&.) . pack . fromInteger @a $ natVal (Proxy :: Proxy (r - 1))
-
-multByTwoToThePowerOf :: (BitPack a) => a -> Int -> a
-multByTwoToThePowerOf x r = unpack . flip shiftL r . pack $ x
-
---
-
 foldrBits :: (BitPack t) => (a -> a) -> (a -> a) -> a -> t -> a
 foldrBits t f z b = fst $ until g h (z, bn) where
-  bv = pack b
   g (_, i) = i < 0
   h (x, i) = (if testBit bv i then t x else f x, i - 1)
   bn = finiteBitSize bv - 1 - countLeadingZeros bv
+  bv = pack b

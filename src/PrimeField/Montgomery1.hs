@@ -1,80 +1,58 @@
 module PrimeField.Montgomery1
-  ( T(..)
+  ( C
+  , T(..)
   , prop_homomorphism
   ) where
 
-import           Prelude            ((<$>))
+import           Prelude            (Integral)
 import           Data.Proxy         (Proxy(..))
 import           GHC.TypeLits       (KnownNat, natVal)
-import           GHC.TypeLits.Extra (type CLog, FLog, Log)
+import           GHC.TypeLits.Extra (CLog, FLog)
 import           GHC.TypeNats       (type (<=))
 
 import           NumericPrelude
-import qualified Algebra.Absolute
 import qualified Algebra.Additive
-import qualified Algebra.IntegralDomain
 import qualified Algebra.Laws
-import qualified Algebra.RealIntegral
 import qualified Algebra.Ring
 import qualified Algebra.ToInteger
-import qualified Algebra.ToRational
 import qualified Algebra.ZeroTestable
+import qualified MathObj.Wrapper.Haskell98 as W
 
 import           Clash.Prelude (BitPack(..))
 import qualified PrimeField
-import           Utils         (floorDivByTwoToThePowerOf, modulo)
+import           Radix         (floorDivBy, modulo)
 
 -- $
 
-class (KnownNat r, FLog 2 r ~ CLog 2 r, 2 <= r, Algebra.Ring.C t, Algebra.ToInteger.C t, BitPack t, Eq t, Ord t, Show t) => (C r t)
+class (KnownNat r, FLog 2 r ~ CLog 2 r, 2 <= r, Algebra.ToInteger.C t, BitPack t, Eq t, Ord t, Show t) => (C r t)
+
+instance (KnownNat r, FLog 2 r ~ CLog 2 r, 2 <= r, Integral t, BitPack t, Eq t, Ord t, Show t) => (C r (W.T t))
 
 --
 
-newtype T r t = Cons { decons :: t } deriving (BitPack, Eq, Functor, Ord, Show)
+newtype T r t = Cons { decons :: t } deriving (BitPack, Eq, Ord, Show)
 
-deriving instance (C r t) => (Algebra.Absolute.C       (T r t))
-deriving instance (C r t) => (Algebra.Additive.C       (T r t))
-deriving instance (C r t) => (Algebra.IntegralDomain.C (T r t))
-deriving instance (C r t) => (Algebra.RealIntegral.C   (T r t))
-deriving instance (C r t) => (Algebra.Ring.C           (T r t))
-deriving instance (C r t) => (Algebra.ToInteger.C      (T r t))
-deriving instance (C r t) => (Algebra.ToRational.C     (T r t))
-deriving instance (C r t) => (Algebra.ZeroTestable.C   (T r t))
-
-radixP :: T r t -> Proxy r
-radixP _ = Proxy
-
-logP :: Proxy r -> Proxy (Log 2 r)
-logP _ = Proxy
-
-logRadix :: (KnownNat r, FLog 2 r ~ CLog 2 r, 2 <= r) => T r t -> Int
-logRadix = fromInteger . natVal . logP . radixP
+deriving instance (C r t) => (Algebra.Additive.C     (T r t))
+deriving instance (C r t) => (Algebra.Ring.C         (T r t))
+deriving instance (C r t) => (Algebra.ZeroTestable.C (T r t))
 
 --
 
-divByR :: (KnownNat r, FLog 2 r ~ CLog 2 r, 2 <= r, BitPack t) => T r t -> T r t
-divByR x = flip floorDivByTwoToThePowerOf (logRadix x) <$> x
+reduce1 :: forall p r t. (KnownNat p, C r t) => T r t -> Proxy p -> T r t
+reduce1 x _ = if x < p then x else x - p where p = fromInteger (natVal @p Proxy)
 
-modR :: (KnownNat r, FLog 2 r ~ CLog 2 r, 2 <= r, Algebra.Ring.C t, BitPack t) => T r t -> T r t
-modR x = flip modulo (radixP x) <$> x
-
---
-
-reduce1 :: (KnownNat p, C r t) => T r t -> Proxy p -> T r t
-x `reduce1` modP = if x < p then x else x - p where p = fromInteger (natVal modP)
-
-reduce2 :: (KnownNat p, KnownNat q, C r t) => T r t -> (Proxy p, Proxy q) -> T r t
-x `reduce2` (modP, auxP) = x' `reduce1` modP where
-  a = modR x
+reduce2 :: forall p q r t. (KnownNat p, KnownNat q, C r t) => T r t -> (Proxy p, Proxy q) -> T r t
+reduce2 x _ = x' `reduce1` (Proxy :: Proxy p) where
+  a = x `modulo` (Proxy :: Proxy r)
   b = a * fromInteger p'
-  c = modR b
+  c = b `modulo` (Proxy :: Proxy r)
   d = x + c * fromInteger p
-  x' = divByR d
-  p' = natVal auxP
-  p = natVal modP
+  x' = d `floorDivBy` (Proxy :: Proxy r)
+  p' = natVal @q Proxy
+  p = natVal @p Proxy
 
-instance (KnownNat p, KnownNat q, C r t) => (PrimeField.C p q (T r t)) where
-  x `into` (modP, _) = fromInteger $ x * natVal (Proxy :: Proxy r) `mod` natVal modP
+instance (KnownNat p, 2 <= p, KnownNat q, C r t) => (PrimeField.C p q (T r t)) where
+  into x _ = fromInteger $ x * natVal @r Proxy `mod` natVal @p Proxy
   outfrom = (toInteger . decons) `compose2` reduce2 where compose2 = (.) . (.)
   addMod (x, y) = reduce1 (x + y) . fst
   mulMod (x, y) = reduce2 (x * y)
