@@ -8,7 +8,7 @@ import qualified Algebra.Laws
 import qualified Algebra.Ring
 
 import           Clash.Prelude (BitPack)
-import           Radix         (floorDivBy)
+import           Radix2        (floorDivBy)
 import           Utils         (EvalEndofunc(..), Ratio(..), compose, foldrBits)
 
 -- $

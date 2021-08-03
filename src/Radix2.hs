@@ -1,4 +1,4 @@
-module Radix where
+module Radix2 where
 
 import           Prelude
 import           Data.Bits          (Bits(..))

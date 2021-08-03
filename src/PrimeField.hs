@@ -26,7 +26,7 @@ import qualified Algebra.ZeroTestable
 import qualified MathObj.Wrapper.Haskell98 as W
 
 import           Clash.Prelude (BitPack)
-import           Radix         (floorDivBy)
+import           Radix2        (floorDivBy)
 import           Utils         (foldrBits)
 
 -- $

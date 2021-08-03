@@ -20,7 +20,7 @@ import qualified MathObj.Wrapper.Haskell98 as W
 
 import           Clash.Prelude (BitPack(..))
 import qualified PrimeField
-import           Radix         (floorDivBy, modulo)
+import           Radix2        (floorDivBy, modulo)
 
 -- $
 
