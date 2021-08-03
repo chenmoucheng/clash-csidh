@@ -1,6 +1,6 @@
 module Tests.Csidh where
 
-import Prelude    ((<$>))
+import Prelude    ()
 import Data.Proxy (Proxy (..))
 
 import Test.Tasty
@@ -51,7 +51,7 @@ prop_groupActionIsCommutativeM =
   H.property $ do
     skA <- H.forAll Csidh.genkey2
     skB <- H.forAll Csidh.genkey2
-    let xPs = PrimeField.T <$> C.iterateI (1 +) 1
+    let xPs = C.iterateI (1 +) 1
     H.assert $ Csidh.prop_groupActionIsCommutative @1000 @P' @StoreM skA skB xPs
 
 prop_scalarMultiplicationIsHomomorphic :: H.Property
@@ -79,7 +79,7 @@ prop_groupActionIsCommutative =
   H.property $ do
     skA <- H.forAll Csidh.genkey2
     skB <- H.forAll Csidh.genkey2
-    let xPs = PrimeField.T <$> C.iterateI (1 +) 1
+    let xPs = C.iterateI (1 +) 1
     H.assert $ Csidh.prop_groupActionIsCommutative @1000 @P' @Store skA skB xPs
 
 --

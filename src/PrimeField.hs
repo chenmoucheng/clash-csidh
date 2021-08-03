@@ -1,6 +1,6 @@
 module PrimeField
   ( C(..)
-  , T(..)
+  , T
   , euclidInverse
   , fermatInverse
   , legendreSymbol
@@ -78,7 +78,7 @@ instance (C p q t) => (Algebra.Field.C (T p q t)) where
 
 --
 
-toThePowerOf :: (C p q t) => T p q t -> t -> T p q t
+toThePowerOf :: forall p q t. (C p q t) => T p q t -> t -> T p q t
 toThePowerOf x = foldrBits sm s 1 where
   sm = (x *) . s
   s = Algebra.Ring.sqr
@@ -102,7 +102,7 @@ fermatInverse x _ = f z where
   f (T _x) = _x
   z = T @p @q @t x `toThePowerOf` (modulusOf z - 2)
 
-legendreSymbol :: (C p q t) => T p q t -> T p q t
+legendreSymbol :: forall p q t. (C p q t) => T p q t -> T p q t
 legendreSymbol 0 = 0
 legendreSymbol x = x `toThePowerOf` (modulusOf x `floorDivBy` (Proxy :: Proxy 2))
 

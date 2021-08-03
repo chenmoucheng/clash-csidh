@@ -1,6 +1,6 @@
 module PrimeField.Montgomery1
   ( C
-  , T(..)
+  , T
   , prop_homomorphism
   ) where
 
@@ -11,10 +11,14 @@ import           GHC.TypeLits.Extra (CLog, FLog)
 import           GHC.TypeNats       (type (<=))
 
 import           NumericPrelude
+import qualified Algebra.Absolute
 import qualified Algebra.Additive
+import qualified Algebra.IntegralDomain
 import qualified Algebra.Laws
+import qualified Algebra.RealIntegral
 import qualified Algebra.Ring
 import qualified Algebra.ToInteger
+import qualified Algebra.ToRational
 import qualified Algebra.ZeroTestable
 import qualified MathObj.Wrapper.Haskell98 as W
 
@@ -30,10 +34,15 @@ instance (KnownNat r, FLog 2 r ~ CLog 2 r, 2 <= r, Integral t, BitPack t, Eq t, 
 
 --
 
-newtype T r t = Cons { decons :: t } deriving (BitPack, Eq, Ord, Show)
+newtype T r t = T t deriving (BitPack, Eq, Ord, Show)
 
+deriving instance (C r t) => (Algebra.Absolute.C     (T r t))
 deriving instance (C r t) => (Algebra.Additive.C     (T r t))
+deriving instance (C r t) => (Algebra.IntegralDomain.C     (T r t))
+deriving instance (C r t) => (Algebra.RealIntegral.C (T r t))
 deriving instance (C r t) => (Algebra.Ring.C         (T r t))
+deriving instance (C r t) => (Algebra.ToInteger.C    (T r t))
+deriving instance (C r t) => (Algebra.ToRational.C   (T r t))
 deriving instance (C r t) => (Algebra.ZeroTestable.C (T r t))
 
 --
@@ -53,7 +62,7 @@ reduce2 x _ = x' `reduce1` (Proxy :: Proxy p) where
 
 instance (KnownNat p, 2 <= p, KnownNat q, C r t) => (PrimeField.C p q (T r t)) where
   into x _ = fromInteger $ x * natVal @r Proxy `mod` natVal @p Proxy
-  outfrom = (toInteger . decons) `compose2` reduce2 where compose2 = (.) . (.)
+  outfrom = toInteger `compose2` reduce2 where compose2 = (.) . (.)
   addMod (x, y) = reduce1 (x + y) . fst
   mulMod (x, y) = reduce2 (x * y)
   invMod = PrimeField.fermatInverse
