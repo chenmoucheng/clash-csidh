@@ -1,7 +1,6 @@
 module Tests.PrimeField where
 
 import Prelude
-import Data.Proxy (Proxy (..))
 
 import Test.Tasty
 import Test.Tasty.QuickCheck
@@ -21,11 +20,11 @@ type P' = 111
 type R1 = W.T Int -- euclidInverse only works with signed store types
 type R1' = W.T Word
 
-instance Arbitrary (PrimeField.T P P' R1)  where arbitrary = hedgehog $ PrimeField.gen     @P @P' @R1  (Proxy, Proxy)
-instance Arbitrary (PrimeField.T P P' R1') where arbitrary = hedgehog $ PrimeField.genUnit @P @P' @R1' (Proxy, Proxy)
+instance Arbitrary (PrimeField.T P P' R1)  where arbitrary = hedgehog $ PrimeField.gen     @P @P' @R1
+instance Arbitrary (PrimeField.T P P' R1') where arbitrary = hedgehog $ PrimeField.genUnit @P @P' @R1'
 
 type R2 = PrimeField.Montgomery1.T 128 (W.T Word)
-instance Arbitrary (PrimeField.T P P' R2) where arbitrary = hedgehog $ PrimeField.genUnit @P @P' @R2 (Proxy, Proxy)
+instance Arbitrary (PrimeField.T P P' R2) where arbitrary = hedgehog $ PrimeField.genUnit @P @P' @R2
 
 tests :: TestTree
 tests = testGroup "Tests.PrimeField"

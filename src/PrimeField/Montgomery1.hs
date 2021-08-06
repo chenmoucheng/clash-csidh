@@ -48,11 +48,11 @@ deriving instance (C r t) => (Algebra.ZeroTestable.C   (T r t))
 
 --
 
-reduce1 :: forall p r t. (KnownNat p, C r t) => T r t -> Proxy p -> T r t
-reduce1 x _ = if x < p then x else x - p where p = fromInteger (natVal @p Proxy)
+reduce1 :: forall p r t. (KnownNat p, C r t) => T r t -> T r t
+reduce1 x = if x < p then x else x - p where p = fromInteger $ natVal @p Proxy
 
-reduce2 :: forall p q r t. (KnownNat p, KnownNat q, C r t) => T r t -> (Proxy p, Proxy q) -> T r t
-reduce2 x _ = x' `reduce1` (Proxy :: Proxy p) where
+reduce2 :: forall p q r t. (KnownNat p, KnownNat q, C r t) => T r t -> T r t
+reduce2 x = x' & reduce1 @p @r where
   a = x & modulo @r
   b = a * fromInteger p'
   c = b & modulo @r
@@ -62,19 +62,18 @@ reduce2 x _ = x' `reduce1` (Proxy :: Proxy p) where
   p = natVal @p Proxy
 
 instance (KnownNat p, 2 <= p, KnownNat q, C r t) => (PrimeField.C p q (T r t)) where
-  into x _ = fromInteger $ x * natVal @r Proxy `mod` natVal @p Proxy
-  outfrom = toInteger `compose2` reduce2 where compose2 = (.) . (.)
-  addMod (x, y) = reduce1 (x + y) . fst
-  mulMod (x, y) = reduce2 (x * y)
-  invMod = PrimeField.fermatInverse
+  into = fromInteger . flip mod (natVal @p Proxy) .  (natVal @r Proxy *)
+  outfrom = toInteger . reduce2 @p @q @r
+  addMod = reduce1 @p    @r `compose2` (+) where compose2 = (.) . (.)
+  mulMod = reduce2 @p @q @r `compose2` (*) where compose2 = (.) . (.)
+  invMod = PrimeField.fermatInverse @p @q
 
 --
 
 prop_homomorphism
-  :: (PrimeField.C p q t, PrimeField.C p q (T r t))
-  => (Proxy p, Proxy q)
-  -> (PrimeField.T p q t -> PrimeField.T p q t -> PrimeField.T p q t)
+  :: forall p q r t. (PrimeField.C p q t, PrimeField.C p q (T r t))
+  => (PrimeField.T p q t -> PrimeField.T p q t -> PrimeField.T p q t)
   -> (PrimeField.T p q (T r t) -> PrimeField.T p q (T r t) -> PrimeField.T p q (T r t))
   -> PrimeField.T p q t -> PrimeField.T p q t -> Bool
-prop_homomorphism proxies = Algebra.Laws.homomorphism phi where
-  phi = fmap $ flip PrimeField.into proxies . flip PrimeField.outfrom proxies
+prop_homomorphism = Algebra.Laws.homomorphism phi where
+  phi = fmap $ PrimeField.into @p @q @(T r t) . PrimeField.outfrom @p @q @t

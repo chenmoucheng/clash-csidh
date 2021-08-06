@@ -1,7 +1,6 @@
 module Tests.PrimeField.Montgomery1 where
 
-import Prelude    (Word)
-import Data.Proxy (Proxy (..))
+import Prelude (Word)
 
 import Test.Tasty
 import Test.Tasty.TH
@@ -20,16 +19,16 @@ import qualified PrimeField
 prop_additiveHomomorphism :: H.Property
 prop_additiveHomomorphism =
   H.property $ do
-    x <- H.forAll $ PrimeField.gen (Proxy, Proxy)
-    y <- H.forAll $ PrimeField.gen (Proxy, Proxy)
-    H.assert $ PrimeField.Montgomery1.prop_homomorphism @113 @111 @(W.T Word) @128 (Proxy, Proxy) (+) (+) x y
+    x <- H.forAll $ PrimeField.gen @113 @111
+    y <- H.forAll $ PrimeField.gen @113 @111
+    H.assert $ PrimeField.Montgomery1.prop_homomorphism @113 @111 @128 @(W.T Word) (+) (+) x y
 
 prop_multiplicativeHomomorphism :: H.Property
 prop_multiplicativeHomomorphism =
   H.property $ do
-    x <- H.forAll $ PrimeField.genUnit (Proxy, Proxy)
-    y <- H.forAll $ PrimeField.genUnit (Proxy, Proxy)
-    H.assert $ PrimeField.Montgomery1.prop_homomorphism @113 @111 @(W.T Word) @128 (Proxy, Proxy) (*) (*) x y
+    x <- H.forAll $ PrimeField.genUnit @113 @111
+    y <- H.forAll $ PrimeField.genUnit @113 @111
+    H.assert $ PrimeField.Montgomery1.prop_homomorphism @113 @111 @128 @(W.T Word) (*) (*) x y
 
 --
 

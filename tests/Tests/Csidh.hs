@@ -1,7 +1,6 @@
 module Tests.Csidh where
 
-import Prelude    ()
-import Data.Proxy (Proxy (..))
+import Prelude ()
 
 import Test.Tasty
 import Test.Tasty.TH
@@ -31,8 +30,8 @@ prop_scalarMultiplicationIsHomomorphicM =
   H.property $ do
     n <- H.forAll . Gen.integral $ Range.linear 0 30
     m <- H.forAll . Gen.integral $ Range.linear 0 30
-    x <- H.forAll $ PrimeField.gen (Proxy, Proxy)
-    z <- H.forAll $ PrimeField.gen (Proxy, Proxy)
+    x <- H.forAll $ PrimeField.gen @Csidh.P @P'
+    z <- H.forAll $ PrimeField.gen @Csidh.P @P'
     H.assert $ Csidh.prop_scalarMultiplicationIsHomomorphic @Csidh.Scalar @(Csidh.K P' StoreM) n m x z
 
 prop_groupActionCommutesWithStoreMultiplicationM :: H.Property
@@ -41,7 +40,7 @@ prop_groupActionCommutesWithStoreMultiplicationM =
     i <- H.forAll . Gen.integral $ Range.linear 0 (length Csidh.ells - 1)
     let ell = Csidh.ells C.!! i
     let f x = Csidh.ellTorsionPoint (ell, x, 1, 0)
-    x <- H.forAll $ Gen.filter ((0 /=) . snd . f) (PrimeField.gen (Proxy, Proxy))
+    x <- H.forAll $ Gen.filter ((0 /=) . snd . f) (PrimeField.gen @Csidh.P @P')
     let (xQ, zQ) = f x
     n <- H.forAll . Gen.integral $ Range.linear 1 1000
     H.assert $ Csidh.prop_groupActionCommutesWithScalarMultiplication @Csidh.Scalar @(Csidh.K P' StoreM) ell (xQ / zQ) n x
@@ -59,8 +58,8 @@ prop_scalarMultiplicationIsHomomorphic =
   H.property $ do
     n <- H.forAll . Gen.integral $ Range.linear 0 30
     m <- H.forAll . Gen.integral $ Range.linear 0 30
-    x <- H.forAll $ PrimeField.gen (Proxy, Proxy)
-    z <- H.forAll $ PrimeField.gen (Proxy, Proxy)
+    x <- H.forAll $ PrimeField.gen @Csidh.P @P'
+    z <- H.forAll $ PrimeField.gen @Csidh.P @P'
     H.assert $ Csidh.prop_scalarMultiplicationIsHomomorphic @Csidh.Scalar @(Csidh.K P' Store) n m x z
 
 prop_groupActionCommutesWithStoreMultiplication :: H.Property
@@ -69,7 +68,7 @@ prop_groupActionCommutesWithStoreMultiplication =
     i <- H.forAll . Gen.integral $ Range.linear 0 (length Csidh.ells - 1)
     let ell = Csidh.ells C.!! i
     let f x = Csidh.ellTorsionPoint (ell, x, 1, 0)
-    x <- H.forAll $ Gen.filter ((0 /=) . snd . f) (PrimeField.gen (Proxy, Proxy))
+    x <- H.forAll $ Gen.filter ((0 /=) . snd . f) (PrimeField.gen @Csidh.P @P')
     let (xQ, zQ) = f x
     n <- H.forAll . Gen.integral $ Range.linear 1 1000
     H.assert $ Csidh.prop_groupActionCommutesWithScalarMultiplication @Csidh.Scalar @(Csidh.K P' Store) ell (xQ / zQ) n x
