@@ -8,10 +8,11 @@ module PrimeField
   , genUnit
   ) where
 
-import           Prelude      (Integral)
-import           Data.Proxy   (Proxy(..))
-import           GHC.TypeLits (KnownNat, natVal)
-import           GHC.TypeNats (type (-), type (<=))
+import           Prelude       (Integral)
+import           Data.Function ((&))
+import           Data.Proxy    (Proxy(..))
+import           GHC.TypeLits  (KnownNat, natVal)
+import           GHC.TypeNats  (type (-), type (<=))
 
 import qualified Hedgehog as H
 import qualified Hedgehog.Gen as Gen
@@ -104,7 +105,7 @@ fermatInverse x _ = f z where
 
 legendreSymbol :: forall p q t. (C p q t) => T p q t -> T p q t
 legendreSymbol 0 = 0
-legendreSymbol x = x `toThePowerOf` (modulusOf x `floorDivBy` (Proxy :: Proxy 2))
+legendreSymbol x = x `toThePowerOf` (modulusOf x & floorDivBy @2)
 
 --
 

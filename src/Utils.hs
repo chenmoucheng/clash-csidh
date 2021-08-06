@@ -1,11 +1,13 @@
 module Utils where
 
-import           Data.Bits (Bits(..), FiniteBits(..))
+import           Data.Bits    (Bits(..), FiniteBits(..))
+import           Data.Proxy   (Proxy(..))
+import           GHC.TypeNats (KnownNat)
 
 import           NumericPrelude
 import qualified Algebra.Ring
 
-import           Clash.Prelude (BitPack(..))
+import qualified Clash.Prelude as C
 
 -- $
 
@@ -22,11 +24,14 @@ compose (E f x) (E g y)
   | x == y = E (f . g) x
   | otherwise = error "cannot compose endofunctions evaluated at different inputs"
 
+composeN :: forall n a. (KnownNat n) => (a -> a) -> a -> a
+composeN = C.foldr (.) id . C.repeat @n
+
 --
 
-foldrBits :: (BitPack t) => (a -> a) -> (a -> a) -> a -> t -> a
+foldrBits :: (C.BitPack t) => (a -> a) -> (a -> a) -> a -> t -> a
 foldrBits t f z b = fst $ until g h (z, bn) where
   g (_, i) = i < 0
   h (x, i) = (if testBit bv i then t x else f x, i - 1)
   bn = finiteBitSize bv - 1 - countLeadingZeros bv
-  bv = pack b
+  bv = C.pack b

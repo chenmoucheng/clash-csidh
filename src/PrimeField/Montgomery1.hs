@@ -5,6 +5,7 @@ module PrimeField.Montgomery1
   ) where
 
 import           Prelude            (Integral)
+import           Data.Function      ((&))
 import           Data.Proxy         (Proxy(..))
 import           GHC.TypeLits       (KnownNat, natVal)
 import           GHC.TypeLits.Extra (CLog, FLog)
@@ -36,14 +37,14 @@ instance (KnownNat r, FLog 2 r ~ CLog 2 r, 2 <= r, Integral t, BitPack t, Eq t, 
 
 newtype T r t = T t deriving (BitPack, Eq, Ord, Show)
 
-deriving instance (C r t) => (Algebra.Absolute.C     (T r t))
-deriving instance (C r t) => (Algebra.Additive.C     (T r t))
-deriving instance (C r t) => (Algebra.IntegralDomain.C     (T r t))
-deriving instance (C r t) => (Algebra.RealIntegral.C (T r t))
-deriving instance (C r t) => (Algebra.Ring.C         (T r t))
-deriving instance (C r t) => (Algebra.ToInteger.C    (T r t))
-deriving instance (C r t) => (Algebra.ToRational.C   (T r t))
-deriving instance (C r t) => (Algebra.ZeroTestable.C (T r t))
+deriving instance (C r t) => (Algebra.Absolute.C       (T r t))
+deriving instance (C r t) => (Algebra.Additive.C       (T r t))
+deriving instance (C r t) => (Algebra.IntegralDomain.C (T r t))
+deriving instance (C r t) => (Algebra.RealIntegral.C   (T r t))
+deriving instance (C r t) => (Algebra.Ring.C           (T r t))
+deriving instance (C r t) => (Algebra.ToInteger.C      (T r t))
+deriving instance (C r t) => (Algebra.ToRational.C     (T r t))
+deriving instance (C r t) => (Algebra.ZeroTestable.C   (T r t))
 
 --
 
@@ -52,11 +53,11 @@ reduce1 x _ = if x < p then x else x - p where p = fromInteger (natVal @p Proxy)
 
 reduce2 :: forall p q r t. (KnownNat p, KnownNat q, C r t) => T r t -> (Proxy p, Proxy q) -> T r t
 reduce2 x _ = x' `reduce1` (Proxy :: Proxy p) where
-  a = x `modulo` (Proxy :: Proxy r)
+  a = x & modulo @r
   b = a * fromInteger p'
-  c = b `modulo` (Proxy :: Proxy r)
+  c = b & modulo @r
   d = x + c * fromInteger p
-  x' = d `floorDivBy` (Proxy :: Proxy r)
+  x' = d & floorDivBy @r
   p' = natVal @q Proxy
   p = natVal @p Proxy
 

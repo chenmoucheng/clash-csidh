@@ -1,6 +1,6 @@
 module Csidh.Isogeny where
 
-import           Data.Proxy (Proxy(..))
+import           Data.Function ((&))
 
 import           NumericPrelude hiding (pi)
 import qualified Algebra.Field
@@ -61,7 +61,7 @@ actWithEllOnMontgomeryPlus (a, ell, xTors, xPush)
             _fZPush' = _fZPush*(xPush - xq)^2
 
         (_, _, _pi, _sigma, _fXPush, _fZPush, _, _, _) = until g h (xQ', zQ', pi', sigma', fXPush', fZPush', xTors, 1, 3)
-        g (_, _, _, _, _, _, _, _, i) = i > ell `floorDivBy` (Proxy :: Proxy 2)
+        g (_, _, _, _, _, _, _, _, i) = i > (ell & floorDivBy @2)
         h (_xQ, _zQ, _pi, _sigma, _fXPush, _fZPush, xPrev, zPrev, i) = (_xQ', _zQ', _pi', _sigma', _fXPush', _fZPush', _xQ, _zQ, i + 1) where
             (_xQ', _zQ') = differentialAdditionMontgomeryPlus (xPrev, zPrev, xTors, 1, _xQ, _zQ, a)
             (_pi', _sigma', _fXPush', _fZPush') = f (_xQ' / _zQ') (_pi, _sigma, _fXPush, _fZPush)
