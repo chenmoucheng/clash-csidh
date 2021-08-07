@@ -77,7 +77,6 @@ toThePowerOf x = foldrBits sm s 1 where
   s = Algebra.Ring.sqr
 
 legendreSymbol :: forall p q t. (C p q t) => T p q t -> T p q t
-legendreSymbol 0 = 0
 legendreSymbol = flip toThePowerOf $ fromInteger (natVal @p Proxy) & floorDivBy @2
 
 --

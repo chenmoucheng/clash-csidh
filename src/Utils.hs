@@ -1,7 +1,6 @@
 module Utils where
 
 import           Data.Bits    (Bits(..), FiniteBits(..))
-import           Data.Proxy   (Proxy(..))
 import           GHC.TypeNats (KnownNat)
 
 import           NumericPrelude

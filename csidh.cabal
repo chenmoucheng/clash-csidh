@@ -89,6 +89,7 @@ library
     Csidh
     PrimeField
     PrimeField.Montgomery1
+    PrimeField.MontgomeryN
   other-modules:
     Csidh.Isogeny
     Radix2
@@ -135,6 +136,7 @@ test-suite test-library
     Tests.Csidh
     Tests.PrimeField
     Tests.PrimeField.Montgomery1
+    Tests.PrimeField.MontgomeryN
   build-depends:
     csidh,
     QuickCheck,
