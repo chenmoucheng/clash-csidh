@@ -92,6 +92,7 @@ library
     PrimeField
     PrimeField.Montgomery1
     PrimeField.MontgomeryN
+    TopEntity
   other-modules:
     Csidh.Isogeny
     Radix2
