@@ -17,5 +17,9 @@ main = do
       Nothing -> pure []
       Just _ -> pure . ("-package-db="++) <$> getGlobalPackageDb
 
-  let ghcOptions = ["-fplugin GHC.TypeLits.Extra.Solver", "-fplugin GHC.TypeLits.Normalise", "-fplugin GHC.TypeLits.KnownNat.Solver"]
+  let ghcOptions = [ "-fplugin GHC.TypeLits.Extra.Solver"
+                   , "-fplugin GHC.TypeLits.Normalise"
+                   , "-fplugin GHC.TypeLits.KnownNat.Solver"
+                   , "-fplugin Protocols.Plugin"
+                   ]
   doctest (flags ++ extraFlags ++ ghcOptions ++ pkgs ++ module_sources)
