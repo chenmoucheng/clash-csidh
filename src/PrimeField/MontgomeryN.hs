@@ -60,6 +60,8 @@ carryModRToTheN = snd . C.mapAccumL f 0 where
 
 newtype T r n t = Cons { decons :: C.Vec n t } deriving (Applicative, Eq, Functor, Show)
 
+deriving instance (KnownNat n, C.NFDataX t) => (C.NFDataX (T r n t))
+
 instance (C r n t) => (Algebra.ZeroTestable.C (T r n t)) where isZero = Algebra.ZeroTestable.defltIsZero
 
 instance (C r n t) => (Algebra.Additive.C (T r n t)) where
@@ -95,7 +97,7 @@ reduce2 (Cons v) = reduce1 @p @r s where
   z = y & modulo @r
   (Cons p) = fromInteger @(T r n t) $ natVal @p Proxy
   u = v `addVec` multVec1 z p
-  lo = C.map (modulo @r) . flip (C.<<+) 0
+  lo = C.map (modulo @r) . (C.<<+ 0)
   hi = C.map (floorDivBy @r)
   s = Cons (lo u) + Cons (hi u)
 

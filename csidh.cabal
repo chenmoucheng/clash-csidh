@@ -88,11 +88,11 @@ library
   hs-source-dirs: src
   exposed-modules:
     Csidh
+    Design.TopEntity
     ExeUnit
     PrimeField
     PrimeField.Montgomery1
     PrimeField.MontgomeryN
-    TopEntity
   other-modules:
     Csidh.Isogeny
     Radix2

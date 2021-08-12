@@ -1,6 +1,6 @@
 module PrimeField
   ( C(..)
-  , T
+  , T(..)
   , euclidInverse
   , fermatInverse
   , legendreSymbol

@@ -5,13 +5,17 @@ module ExeUnit
   , mkBram1reg
   , mkBram1
   , mkBram2
+  , bram1Reader
+  , bram1Writer
   , share
+  , shareEx
+  , shareEx'
   , untilC
   , toData
   , fromData
   ) where
 
-import           Data.Bifunctor (first)
+import           Data.Bifunctor (bimap, first)
 import           Data.Coerce    (coerce)
 import           Data.Proxy     (Proxy(..))
 
@@ -107,6 +111,27 @@ mkBram2 contents = adpt |> bram where
 
 --
 
+bram1Reader
+  :: forall t dom m n a. (HiddenClockResetEnable dom, KnownNat n, 1 <= n, BitPack a, NFDataX a, BitPack t, NFDataX t, KnownNat m, 1 <= m, (m * BitSize a) ~ BitSize t)
+  => Circuit (Df dom (Unsigned n), Df dom a) (Df dom (Unsigned n), Df dom t)
+bram1Reader = circuit $ \(baseAddr, sharedOut) -> do
+  vecAddr <- Df.unbundleVec <| Df.map (iterateI (1 +)) -< baseAddr
+  (sharedIn, vecOut) <- shareEx -< (vecAddr, sharedOut)
+  dout <- Df.map unpack <| Df.map pack <| Df.bundleVec -< vecOut
+  idC -< (sharedIn, dout)
+
+bram1Writer
+  :: forall t dom m n a. (HiddenClockResetEnable dom, KnownNat n, 1 <= n, BitPack a, NFDataX a, BitPack t, NFDataX t, KnownNat m, 1 <= m, (m * BitSize a) ~ BitSize t)
+  => Circuit (Df dom (Unsigned n, t)) (Df dom (Unsigned n, a))
+bram1Writer = circuit $ \din -> do
+  let f = iterateI (1 +)
+  let g = unpack . pack
+  vin <- Df.unbundleVec <| Df.map (uncurry zip . bimap f g) -< din
+  sharedIn <- shareEx' -< vin
+  idC -< sharedIn
+
+--
+
 peek :: (HiddenClockResetEnable dom, NFDataX b)
   => (Fwd a -> Fwd (Df dom b))
   -> Circuit a (a, Df dom b)
@@ -122,13 +147,27 @@ share :: (HiddenClockResetEnable dom, KnownNat n, 1 <= n)
   => Circuit (Df dom a) (Df dom b)
   -> Circuit (Vec n (Df dom a)) (Vec n (Df dom b))
 share cir = circuit $ \xs -> do
+  cout <- cir -< cin
+  (cin, ys) <- shareEx -< (xs, cout)
+  idC -< ys
+
+shareEx :: forall n a b dom. (HiddenClockResetEnable dom, KnownNat n, 1 <= n)
+  => Circuit (Vec n (Df dom a), Df dom b) (Df dom a, Vec n (Df dom b))
+shareEx = circuit $ \(xs, cout) -> do
   let selC = peek $ fmap (maybe empty pure . findIndex hasPayload) . bundle
   (ys, i) <- selC -< xs
   [j, k] <- Df.fanout -< i
-  x <- cir <| Df.select -< (ys, j)
+  cin <- Df.select -< (ys, j)
   l <- Df.registerFwd -< k
-  zs <- Df.route <| Df.zip -< (l, x)
-  idC -< zs
+  zs <- Df.route <| Df.zip -< (l, cout)
+  idC -< (cin, zs)
+
+shareEx' :: forall n a dom. (HiddenClockResetEnable dom, KnownNat n, 1 <= n)
+  => Circuit (Vec n (Df dom a)) (Df dom a)
+shareEx' = circuit $ \xs -> do
+  let selC = peek $ fmap (maybe empty pure . findIndex hasPayload) . bundle
+  cin <- Df.select <| selC -< xs
+  idC -< cin
 
 untilC :: (HiddenClockResetEnable dom, NFDataX a)
   => (a -> Bool)
