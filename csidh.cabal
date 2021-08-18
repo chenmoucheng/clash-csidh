@@ -161,4 +161,8 @@ test-suite testbench
     base,
     csidh,
     clash-prelude >= 1.2.5 && < 1.6,
+    clash-protocols,
+    ghc-typelits-natnormalise,
+    ghc-typelits-extra,
+    ghc-typelits-knownnat
 

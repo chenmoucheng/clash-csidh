@@ -10,6 +10,8 @@ module ExeUnit
   , share
   , shareEx
   , shareEx'
+  , foldlC
+  , foldrC
   , untilC
   , toData
   , fromData
@@ -22,7 +24,7 @@ import           Data.Proxy     (Proxy(..))
 import           NumericPrelude (ifThenElse)
 
 import           Clash.Prelude
-import           Protocols (Circuit(..), Df, Protocol(..), (<|), (|>))
+import           Protocols (Circuit(..), Df, Protocol(..), (<|), (|>), repeatC)
 import qualified Protocols.Df as Df
 
 -- $
@@ -117,7 +119,8 @@ bram1Reader
 bram1Reader = circuit $ \(baseAddr, sharedOut) -> do
   vecAddr <- Df.unbundleVec <| Df.map (iterateI (1 +)) -< baseAddr
   (sharedIn, vecOut) <- shareEx -< (vecAddr, sharedOut)
-  dout <- Df.map unpack <| Df.map pack <| Df.bundleVec -< vecOut
+  vecOutReg <- repeatC Df.registerFwd -< vecOut
+  dout <- Df.map unpack <| Df.map pack <| Df.bundleVec -< vecOutReg
   idC -< (sharedIn, dout)
 
 bram1Writer
@@ -158,7 +161,7 @@ shareEx = circuit $ \(xs, cout) -> do
   (ys, i) <- selC -< xs
   [j, k] <- Df.fanout -< i
   cin <- Df.select -< (ys, j)
-  l <- Df.registerFwd -< k
+  l <- Df.registerBwd -< k
   zs <- Df.route <| Df.zip -< (l, cout)
   idC -< (cin, zs)
 
@@ -168,6 +171,32 @@ shareEx' = circuit $ \xs -> do
   let selC = peek $ fmap (maybe empty pure . findIndex hasPayload) . bundle
   cin <- Df.select <| selC -< xs
   idC -< cin
+
+foldlC :: forall n a b dom. (HiddenClockResetEnable dom, KnownNat n, 1 <= n, NFDataX a, NFDataX b)
+  => Circuit (Df dom (b, a)) (Df dom b)
+  -> Circuit (Vec n (Df dom a), Df dom b) (Df dom b)
+foldlC cir = circuit $ \(xs, y0) -> do
+  -- zipVecC :: Circuit (Vec n (Df dom a), Vec n (Df dom b)) (Vec n (Df dom a, Df dom b))
+  let zipVecC = Circuit $ \((iDats1, iDats2), iAcks) -> (unzip iAcks, zip iDats1 iDats2)
+  cin <- repeatC Df.zip  <| zipVecC -< (tozip, xs)
+  cout <- share cir -< cin
+  -- feedbackC :: Circuit (Df dom a, Vec n (Df dom a)) (Vec n (Df dom a), Df dom a)
+  let feedbackC = Circuit $ \((iDat, iDats), (iAcks, iAck)) -> ((head @(n - 1) iAcks, iAcks <<+ iAck), (iDat +>> iDats, last @(n - 1) iDats))
+  (tozip, yn) <- feedbackC -< (y0, cout)
+  idC -< yn
+
+foldrC :: forall n a b dom. (HiddenClockResetEnable dom, KnownNat n, 1 <= n, NFDataX a, NFDataX b)
+  => Circuit (Df dom (a, b)) (Df dom b)
+  -> Circuit (Vec n (Df dom a), Df dom b) (Df dom b)
+foldrC cir = circuit $ \(xs, y0) -> do
+  -- zipVecC :: Circuit (Vec n (Df dom a), Vec n (Df dom b)) (Vec n (Df dom a, Df dom b))
+  let zipVecC = Circuit $ \((iDats1, iDats2), iAcks) -> (unzip iAcks, zip iDats1 iDats2)
+  cin <- repeatC Df.zip  <| zipVecC -< (xs, tozip)
+  cout <- share cir -< cin
+  -- feedbackC :: Circuit (Vec n (Df dom a), Df dom a) (Df dom a, Vec n (Df dom a))
+  let feedbackC = Circuit $ \((iDats, iDat), (iAck, iAcks)) -> ((iAck +>> iAcks, last @(n - 1) iAcks), (head @(n - 1) iDats, iDats <<+ iDat))
+  (yn, tozip) <- feedbackC -< (cout, y0)
+  idC -< yn
 
 untilC :: (HiddenClockResetEnable dom, NFDataX a)
   => (a -> Bool)

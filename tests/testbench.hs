@@ -3,10 +3,10 @@ import           Data.Coerce (coerce)
 import           Clash.Prelude
 import           Clash.Explicit.Testbench (tbSystemClockGen, outputVerifier', stimuliGenerator)
 
-import           Protocols (toSignals)
+import           Protocols ((|>), toSignals)
 import qualified Protocols.Df as Df
 
-import           ExeUnit (mkBram1, mkBram1reg, mkBram2, share, untilC)
+import           ExeUnit (mkBram1, mkBram1reg, mkBram2, bram1Reader, share, foldlC, foldrC, untilC)
 
 --
 
@@ -158,9 +158,93 @@ tailRecursionTb = done where
 
 --
 
+{-# ANN foldlCir
+    (Synthesize
+        { t_name   = "foldlCir"
+        , t_inputs = [ PortName "clk"
+                     , PortName "rst"
+                     , PortName "en"
+                     , PortName "din"
+                     ]
+        , t_output = PortProduct "" [PortName "ack", PortName "dout"]
+        }) #-}
+foldlCir
+    :: Clock System
+    -> Reset System
+    -> Enable System
+    -> Signal System (Df.Data BramData)
+    -> Signal System (Bool, Df.Data BramData)
+foldlCir = exposeClockResetEnable $ \din -> let
+    adderC = circuit $ \x -> do
+        rdOut <- mkBram2 $ iterateI (1 +) 1 -< (rdIn, wrIn)
+        wrIn <- Df.pure empty
+        base <- Df.pure (pure 0)
+        (rdIn, xs) <- bram1Reader @(Vec 2 BramData) @System @2 @10 @BramData -< (base, rdOut)
+        xs' <- Df.unbundleVec -< xs
+        let cir = Df.map (uncurry (+)) |> Df.registerBwd
+        y <- foldlC cir -< (xs', x)
+        idC -< y
+    (ack, dout) = toSignals adderC (din, pure def)
+    in bundle (coerce <$> ack, dout)
+{-# NOINLINE foldlCir #-}
+
+foldlCirTb :: Signal System Bool
+foldlCirTb = done where
+    testInput    = stimuliGenerator clk rst ( pure 0       :> pure 0       :> pure 0       :> pure 0      :> empty        :> empty         :> pure 1      :> pure 2       :> pure 2        :>Nil)
+    expectOutput = outputVerifier'  clk rst ((False, empty):>(False, empty):>(False, empty):>(True, empty):>(False, empty):>(False, pure 3):>(True, empty):>(False, empty):>(False, pure 4):>Nil)
+    done         = expectOutput (foldlCir clk rst en testInput)
+    en           = enableGen
+    clk          = tbSystemClockGen (not <$> done)
+    rst          = systemResetGen
+
+--
+
+{-# ANN foldrCir
+    (Synthesize
+        { t_name   = "foldrCir"
+        , t_inputs = [ PortName "clk"
+                     , PortName "rst"
+                     , PortName "en"
+                     , PortName "din"
+                     ]
+        , t_output = PortProduct "" [PortName "ack", PortName "dout"]
+        }) #-}
+foldrCir
+    :: Clock System
+    -> Reset System
+    -> Enable System
+    -> Signal System (Df.Data BramData)
+    -> Signal System (Bool, Df.Data BramData)
+foldrCir = exposeClockResetEnable $ \din -> let
+    adderC = circuit $ \x -> do
+        rdOut <- mkBram2 $ iterateI (1 +) 1 -< (rdIn, wrIn)
+        wrIn <- Df.pure empty
+        base <- Df.pure (pure 0)
+        (rdIn, xs) <- bram1Reader @(Vec 2 BramData) @System @2 @10 @BramData -< (base, rdOut)
+        xs' <- Df.unbundleVec -< xs
+        let cir = Df.map (uncurry (*)) |> Df.registerBwd
+        y <- foldrC cir -< (xs', x)
+        idC -< y
+    (ack, dout) = toSignals adderC (din, pure def)
+    in bundle (coerce <$> ack, dout)
+{-# NOINLINE foldrCir #-}
+
+foldrCirTb :: Signal System Bool
+foldrCirTb = done where
+    testInput    = stimuliGenerator clk rst ( pure 0       :> pure 0       :> pure 0       :> pure 0      :> empty        :> empty         :> pure 1      :> pure 2       :> pure 2        :>Nil)
+    expectOutput = outputVerifier'  clk rst ((False, empty):>(False, empty):>(False, empty):>(True, empty):>(False, empty):>(False, pure 0):>(True, empty):>(False, empty):>(False, pure 2):>Nil)
+    done         = expectOutput (foldrCir clk rst en testInput)
+    en           = enableGen
+    clk          = tbSystemClockGen (not <$> done)
+    rst          = systemResetGen
+
+--
+
 main :: IO ()
 main = do
     print $ sampleN 9 bramReaderTb
     print $ sampleN 9 sharedBramTb
     print $ sampleN 10 sharedBramTb'
     print $ sampleN 10 tailRecursionTb
+    print $ sampleN 11 foldlCirTb
+    print $ sampleN 11 foldrCirTb
