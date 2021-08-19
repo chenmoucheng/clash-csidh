@@ -38,7 +38,7 @@ entryState :: forall n. (KnownNat n, 1 <= n) => State n
 entryState = Busy . fromInteger $ natVal @(n - 1) Proxy
 
 mkFSM
-  :: forall n dom a b. (HiddenClockResetEnable dom, KnownNat n, 1 <= n)
+  :: (HiddenClockResetEnable dom, KnownNat n, 1 <= n)
   => (Fwd (Df dom a), Bwd (Df dom b))
   -> Signal dom (State n, State n)
 mkFSM = mealy go Idle . bundle where
@@ -69,11 +69,11 @@ canEn _ = False
 --
 
 mkExeUnit
-  :: forall n dom a b. (HiddenClockResetEnable dom, KnownNat n, 1 <= n, NFDataX a)
+  :: forall dom n a b. (HiddenClockResetEnable dom, KnownNat n, 1 <= n, NFDataX a)
   => (Enable dom -> Signal dom a -> Signal dom b)
   -> Circuit (Df dom a) (Df dom b)
 mkExeUnit f = Circuit . hideEnable $ \en (iDat, iAck) -> let
-  s = mkFSM @n (iDat, iAck)
+  s = mkFSM @dom @n (iDat, iAck)
   oAck = coerce . poseAck <$> s
   en' = toEnable $ fromEnable en .&&. canEn <$> s
   fout = f en' (getPayloadUnsafe <$> iDat)
@@ -86,7 +86,7 @@ mkBram1reg
   :: (HiddenClockResetEnable dom, KnownNat n, 1 <= n, NFDataX a)
   => Vec (2 ^ n) a
   -> Circuit (Df dom (Unsigned n, Maybe (Unsigned n, a))) (Df dom a)
-mkBram1reg contents = mkExeUnit @2 f where
+mkBram1reg contents = mkExeUnit @_ @2 f where
   -- to avoid monomorphism restriction
   f x = (exposeEnable $ register undefined . uncurry (readNew $ blockRamPow2 contents) . unbundle) x
 
@@ -94,7 +94,7 @@ mkBram1
   :: (HiddenClockResetEnable dom, KnownNat n, 1 <= n, NFDataX a)
   => Vec (2 ^ n) a
   -> Circuit (Df dom (Unsigned n, Maybe (Unsigned n, a))) (Df dom a)
-mkBram1 contents = mkExeUnit @1 f where
+mkBram1 contents = mkExeUnit @_ @1 f where
   -- to avoid monomorphism restriction
   f x = (exposeEnable $ uncurry (readNew $ blockRamPow2 contents) . unbundle) x
 
@@ -114,7 +114,7 @@ mkBram2 contents = adpt |> bram where
 --
 
 bram1Reader
-  :: forall t dom m n a. (HiddenClockResetEnable dom, KnownNat n, 1 <= n, BitPack a, NFDataX a, BitPack t, NFDataX t, KnownNat m, 1 <= m, (m * BitSize a) ~ BitSize t)
+  :: (HiddenClockResetEnable dom, KnownNat n, 1 <= n, BitPack a, NFDataX a, BitPack t, NFDataX t, KnownNat m, 1 <= m, (m * BitSize a) ~ BitSize t)
   => Circuit (Df dom (Unsigned n), Df dom a) (Df dom (Unsigned n), Df dom t)
 bram1Reader = circuit $ \(baseAddr, sharedOut) -> do
   vecAddr <- Df.unbundleVec <| Df.map (iterateI (1 +)) -< baseAddr
@@ -124,7 +124,7 @@ bram1Reader = circuit $ \(baseAddr, sharedOut) -> do
   idC -< (sharedIn, dout)
 
 bram1Writer
-  :: forall t dom m n a. (HiddenClockResetEnable dom, KnownNat n, 1 <= n, BitPack a, NFDataX a, BitPack t, NFDataX t, KnownNat m, 1 <= m, (m * BitSize a) ~ BitSize t)
+  :: (HiddenClockResetEnable dom, KnownNat n, 1 <= n, BitPack a, NFDataX a, BitPack t, NFDataX t, KnownNat m, 1 <= m, (m * BitSize a) ~ BitSize t)
   => Circuit (Df dom (Unsigned n, t)) (Df dom (Unsigned n, a))
 bram1Writer = circuit $ \din -> do
   let f = iterateI (1 +)
@@ -135,7 +135,8 @@ bram1Writer = circuit $ \din -> do
 
 --
 
-peek :: (HiddenClockResetEnable dom, NFDataX b)
+peek
+  :: (HiddenClockResetEnable dom, NFDataX b)
   => (Fwd a -> Fwd (Df dom b))
   -> Circuit a (a, Df dom b)
 peek f = Circuit $ \(iDat, (iAck, ack)) -> let
@@ -146,7 +147,8 @@ peek f = Circuit $ \(iDat, (iAck, ack)) -> let
     go s _ = s
   in (iAck, (iDat, mux sel dat $ register empty dat))
 
-share :: (HiddenClockResetEnable dom, KnownNat n, 1 <= n)
+share
+  :: (HiddenClockResetEnable dom, KnownNat n, 1 <= n)
   => Circuit (Df dom a) (Df dom b)
   -> Circuit (Vec n (Df dom a)) (Vec n (Df dom b))
 share cir = circuit $ \xs -> do
@@ -154,7 +156,8 @@ share cir = circuit $ \xs -> do
   (cin, ys) <- shareEx -< (xs, cout)
   idC -< ys
 
-shareEx :: forall n a b dom. (HiddenClockResetEnable dom, KnownNat n, 1 <= n)
+shareEx
+  :: (HiddenClockResetEnable dom, KnownNat n, 1 <= n)
   => Circuit (Vec n (Df dom a), Df dom b) (Df dom a, Vec n (Df dom b))
 shareEx = circuit $ \(xs, cout) -> do
   let selC = peek $ fmap (maybe empty pure . findIndex hasPayload) . bundle
@@ -165,14 +168,18 @@ shareEx = circuit $ \(xs, cout) -> do
   zs <- Df.route <| Df.zip -< (l, cout)
   idC -< (cin, zs)
 
-shareEx' :: forall n a dom. (HiddenClockResetEnable dom, KnownNat n, 1 <= n)
+shareEx'
+  :: (HiddenClockResetEnable dom, KnownNat n, 1 <= n)
   => Circuit (Vec n (Df dom a)) (Df dom a)
 shareEx' = circuit $ \xs -> do
   let selC = peek $ fmap (maybe empty pure . findIndex hasPayload) . bundle
   cin <- Df.select <| selC -< xs
   idC -< cin
 
-foldlC :: forall n a b dom. (HiddenClockResetEnable dom, KnownNat n, 1 <= n, NFDataX a, NFDataX b)
+--
+
+foldlC
+  :: forall dom n a b. (HiddenClockResetEnable dom, KnownNat n, 1 <= n, NFDataX a, NFDataX b)
   => Circuit (Df dom (b, a)) (Df dom b)
   -> Circuit (Vec n (Df dom a), Df dom b) (Df dom b)
 foldlC cir = circuit $ \(xs, y0) -> do
@@ -185,7 +192,8 @@ foldlC cir = circuit $ \(xs, y0) -> do
   (tozip, yn) <- feedbackC -< (y0, cout)
   idC -< yn
 
-foldrC :: forall n a b dom. (HiddenClockResetEnable dom, KnownNat n, 1 <= n, NFDataX a, NFDataX b)
+foldrC
+  :: forall dom n a b. (HiddenClockResetEnable dom, KnownNat n, 1 <= n, NFDataX a, NFDataX b)
   => Circuit (Df dom (a, b)) (Df dom b)
   -> Circuit (Vec n (Df dom a), Df dom b) (Df dom b)
 foldrC cir = circuit $ \(xs, y0) -> do
@@ -198,7 +206,8 @@ foldrC cir = circuit $ \(xs, y0) -> do
   (yn, tozip) <- feedbackC -< (cout, y0)
   idC -< yn
 
-untilC :: (HiddenClockResetEnable dom, NFDataX a)
+untilC
+  :: (HiddenClockResetEnable dom, NFDataX a)
   => (a -> Bool)
   -> Circuit (Df dom a) (Df dom a)
   -> Circuit (Df dom a) (Df dom a)
