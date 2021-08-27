@@ -48,6 +48,7 @@ common common-options
     NoImplicitPrelude
   ghc-options:
     -Wall -Wcompat
+    -Wno-orphans
     -haddock
 
     -- Plugins to support type-level constraint solving on naturals
@@ -74,6 +75,7 @@ common common-options
     ghc-typelits-extra,
     ghc-typelits-knownnat,
     hedgehog,
+    interpolate,
     numeric-prelude
 
 
@@ -140,6 +142,7 @@ test-suite test-library
     Tests.PrimeField
     Tests.PrimeField.Montgomery1
     Tests.PrimeField.MontgomeryN
+
   build-depends:
     csidh,
     QuickCheck,
@@ -160,9 +163,4 @@ test-suite testbench
   build-depends:
     base,
     csidh,
-    clash-prelude >= 1.2.5 && < 1.6,
-    clash-protocols,
-    ghc-typelits-natnormalise,
-    ghc-typelits-extra,
-    ghc-typelits-knownnat
-
+    clash-prelude >= 1.2.5 && < 1.6

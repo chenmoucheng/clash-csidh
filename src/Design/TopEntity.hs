@@ -2,17 +2,15 @@
 
 module Design.TopEntity where
 
-import qualified NumericPrelude as NP
 import qualified MathObj.Wrapper.Haskell98 as W
 
 import Clash.Prelude
 import Protocols (Circuit(..), Df, (<|), toSignals)
 import qualified Protocols.Df as Df
 
-import ExeUnit (fromData, mkBram2, bram1Reader, bram1Writer, shareEx, shareEx', toData)
-import qualified PrimeField.MontgomeryN
+import ExeUnit (bram1Reader, bram1Writer, dsp48mult, fromData, mkBram2, shareEx, shareEx', toData)
 
-type BramAddr = Unsigned 10
+type BramAddr = Unsigned 8
 type BramData = Unsigned 32
 
 {-# ANN myipclash
@@ -50,21 +48,22 @@ master
   => Circuit (Df dom BramAddr, Df dom (BramAddr, BramData), Df dom BramData) (Df dom BramData)
 master = circuit $ \(rdDf, wrDf, ctDf) -> do
   bramOut <- mkBram2 $ repeat 0 -< (bramRdIn, bramWrIn)
-  (bramRdIn, [dout, sharedOut]) <- shareEx -< ([rdDf, sharedRdIn], bramOut)
-  bramWrIn <- shareEx' -< [wrDf, sharedWrIn]
-  (sharedRdIn, sharedWrIn) <- slave -< (ctDf, sharedOut)
+  (bramRdIn, [dout, toSlaveData]) <- shareEx Df.registerFwd -< ([rdDf, fromSlaveRd], bramOut)
+  bramWrIn <- shareEx' -< [wrDf, fromSlaveWr]
+  toSlaveCntl <- Df.registerFwd -< ctDf
+  (fromSlaveRd, fromSlaveWr) <- slave -< (toSlaveCntl, toSlaveData)
   idC -< dout
 
 slave
   :: (HiddenClockResetEnable dom)
   => Circuit (Df dom BramData, Df dom BramData) (Df dom BramAddr, Df dom (BramAddr, BramData))
-slave = circuit $ \(ctDf, sharedOut) -> do
-  baseAddr <- Df.map (unpack . resize . pack) -< ctDf
+slave = circuit $ \(fromMaster, fromBram) -> do
+  baseAddr <- Df.map (unpack . resize . pack) -< fromMaster
   [rdAddr, wrAddr] <- Df.fanout -< baseAddr
-  (sharedRdIn, x) <- bram1Reader @(PrimeField.MontgomeryN.T 256 64 (W.T (Unsigned 18))) -< (rdAddr, sharedOut)
-  let double x = x NP.+ x
-  y <- Df.map double -< x
-  sharedWrIn <- bram1Writer <| Df.zip -< (wrAddr, y)
-  idC -< (sharedRdIn, sharedWrIn)
+  (toBramRd, x) <- bram1Reader @_ @_ @_ @(Unsigned 64) Df.registerFwd -< (rdAddr, fromBram)
+  [x1, x2] <- Df.fanout -< x
+  y <- Df.registerBwd <| Df.map (uncurry (dsp48mult @36)) <| Df.zip -< (x1, x2)
+  toBramWr <- bram1Writer <| Df.zip -< (wrAddr, y)
+  idC -< (toBramRd, toBramWr)
 
 deriving instance (NFDataX a) => (NFDataX (W.T a))
