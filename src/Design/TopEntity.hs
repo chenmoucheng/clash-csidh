@@ -10,6 +10,8 @@ import qualified Protocols.Df as Df
 
 import ExeUnit (bram1Reader, bram1Writer, dsp48mult, fromData, mkBram2, shareEx, shareEx', toData)
 
+--
+
 type BramAddr = Unsigned 8
 type BramData = Unsigned 32
 
@@ -42,6 +44,8 @@ myipclash = exposeClockResetEnable $ \rden addr wren din -> let
   ctDf = toData <$> bundle (wren .&&. (0 ==) <$> addr, din)
   (_, dout) = toSignals master ((rdDf, wrDf, ctDf), pure def)
   in snd . fromData <$> dout
+
+--
 
 master
   :: (HiddenClockResetEnable dom)

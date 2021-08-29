@@ -25,7 +25,7 @@ import           Data.String.Interpolate.Util (unindent)
 
 import           NumericPrelude (ifThenElse)
 
-import           Clash.Annotations.Primitive
+import           Clash.Annotations.Primitive (HDL(..), Primitive(..))
 import           Clash.Prelude
 import           Protocols (Circuit(..), Df, Protocol(..), (<|), (|>), repeatC, toSignals)
 import qualified Protocols.Df as Df

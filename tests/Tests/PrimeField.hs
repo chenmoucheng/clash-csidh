@@ -12,6 +12,7 @@ import qualified MathObj.Wrapper.Haskell98 as W
 
 import qualified PrimeField
 import qualified PrimeField.Montgomery1
+import qualified PrimeField.MontgomeryN
 
 --
 
@@ -26,6 +27,9 @@ instance Arbitrary (PrimeField.T P P' R1') where arbitrary = hedgehog $ PrimeFie
 type R2 = PrimeField.Montgomery1.T 128 (W.T Word)
 instance Arbitrary (PrimeField.T P P' R2) where arbitrary = hedgehog $ PrimeField.genUnit @P @P' @R2
 
+type R3 = PrimeField.MontgomeryN.T 2 7 (W.T Word)
+instance Arbitrary (PrimeField.T P 1 R3) where arbitrary = hedgehog $ PrimeField.genUnit @P @1 @R3
+
 tests :: TestTree
 tests = testGroup "Tests.PrimeField"
   [ testProperty "Algebra.Ring.propLeftDistributive"               $ Algebra.Ring.propLeftDistributive  @(PrimeField.T P P' R1')
@@ -34,6 +38,9 @@ tests = testGroup "Tests.PrimeField"
   , testProperty "Montgomery1: Algebra.Ring.propLeftDistributive"  $ Algebra.Ring.propLeftDistributive  @(PrimeField.T P P' R2)
   , testProperty "Montgomery1: Algebra.Ring.propRightDistributive" $ Algebra.Ring.propRightDistributive @(PrimeField.T P P' R2)
   , testProperty "Montgomery1: Algebra.Field.propReciprocal"       $ Algebra.Field.propReciprocal       @(PrimeField.T P P' R2)
+  , testProperty "MontgomeryN: Algebra.Ring.propLeftDistributive"  $ Algebra.Ring.propLeftDistributive  @(PrimeField.T P 1 R3)
+  , testProperty "MontgomeryN: Algebra.Ring.propRightDistributive" $ Algebra.Ring.propRightDistributive @(PrimeField.T P 1 R3)
+  , testProperty "MontgomeryN: Algebra.Field.propReciprocal"       $ Algebra.Field.propReciprocal       @(PrimeField.T P 1 R3)
   ]
 
 main :: IO ()

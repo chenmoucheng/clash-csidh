@@ -8,7 +8,7 @@ import qualified Protocols.Df as Df
 
 import           ExeUnit (bram1Reader, bram1Writer, foldlC, foldrC, mkBram1, mkBram2, share, shareEx, shareEx', untilC)
 
--- $
+--
 
 type BramAddr = Unsigned 4
 type BramData = Unsigned 32

@@ -26,7 +26,7 @@ import qualified Algebra.Ring
 import qualified Algebra.ZeroTestable
 import qualified MathObj.Wrapper.Haskell98 as W
 
-import           Clash.Prelude (BitPack)
+import           Clash.Prelude (BitPack, BitSize, Unsigned)
 import           Radix2        (floorDivBy)
 import           Utils         (foldrBits)
 
@@ -71,7 +71,7 @@ instance (C p q t) => (Algebra.Field.C (T p q t)) where
 
 --
 
-toThePowerOf :: forall p q t. (C p q t) => T p q t -> t -> T p q t
+toThePowerOf :: forall p q t. (C p q t) => T p q t -> W.T (Unsigned (BitSize t)) -> T p q t
 toThePowerOf x = foldrBits sm s 1 where
   sm = (x *) . s
   s = Algebra.Ring.sqr
