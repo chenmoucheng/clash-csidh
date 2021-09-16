@@ -8,7 +8,8 @@ import Clash.Prelude
 import Protocols (Circuit(..), Df, (<|), toSignals)
 import qualified Protocols.Df as Df
 
-import ExeUnit (bram1Reader, bram1Writer, dsp48mult, fromData, mkBram2, shareEx, shareEx', toData)
+import Edsl    (bram1Reader, bram1Writer, shareEx, shareEx')
+import ExeUnit (dsp48mult, fromData, mkBram2, toData)
 
 --
 

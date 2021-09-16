@@ -5,29 +5,21 @@ module ExeUnit
   , mkExeUnit
   , mkBram1
   , mkBram2
-  , bram1Reader
-  , bram1Writer
-  , share
-  , shareEx
-  , shareEx'
-  , foldlC
-  , foldrC
-  , untilC
   , toData
   , fromData
+  , hasPayload
+  , getPayloadUnsafe
   ) where
 
-import           Data.Bifunctor               (bimap, first)
+import           Data.Bifunctor               (first)
 import           Data.Coerce                  (coerce)
 import           Data.Proxy                   (Proxy(..))
 import           Data.String.Interpolate      (i)
 import           Data.String.Interpolate.Util (unindent)
 
-import           NumericPrelude (ifThenElse)
-
 import           Clash.Annotations.Primitive (HDL(..), Primitive(..))
 import           Clash.Prelude
-import           Protocols (Circuit(..), Df, Protocol(..), (<|), (|>), repeatC, toSignals)
+import           Protocols (Circuit(..), Df, Protocol(..), (|>), toSignals)
 import qualified Protocols.Df as Df
 
 -- $
@@ -127,115 +119,6 @@ mkBram2 contents = Circuit $ \((iRdDat, iWrDat), iAck) -> let
   wrOnly = register False $ (not . hasPayload <$> iRdDat) .&&. hasPayload <$> iWrDat
   ((oRdAck, oWrAck), oDat) = toSignals (adpt |> mkBram1 contents) ((iRdDat, iWrDat), coerce $ coerce iAck .||. wrOnly)
   in ((oRdAck, oWrAck), oDat)
-
---
-
-bram1Reader
-  :: (HiddenClockResetEnable dom, BitPack a, NFDataX a, KnownNat n, 1 <= n, BitPack t, NFDataX t, KnownNat m, 1 <= m, (m * BitSize a) ~ BitSize t)
-  => Circuit (Df dom a) (Df dom a)
-  -> Circuit (Df dom (Unsigned n), Df dom a) (Df dom (Unsigned n), Df dom t)
-bram1Reader buf = circuit $ \(addr, fromBram) -> do
-  addrs <- Df.unbundleVec <| Df.map (iterateI (1 +)) -< addr
-  (toBram, douts) <- shareEx Df.registerFwd -< (addrs, fromBram)
-  dout <- Df.map unpack <| Df.map pack <| Df.bundleVec <| repeatC buf -< douts
-  idC -< (toBram, dout)
-
-bram1Writer
-  :: (HiddenClockResetEnable dom, KnownNat n, 1 <= n, BitPack a, NFDataX a, BitPack t, NFDataX t, KnownNat m, 1 <= m, (m * BitSize a) ~ BitSize t)
-  => Circuit (Df dom (Unsigned n, t)) (Df dom (Unsigned n, a))
-bram1Writer = circuit $ \din -> do
-  let f = iterateI (1 +)
-  let g = unpack . pack
-  dins <- Df.unbundleVec <| Df.map (uncurry zip . bimap f g) -< din
-  toBram <- shareEx' -< dins
-  idC -< toBram
-
---
-
-peek
-  :: (HiddenClockResetEnable dom, NFDataX b)
-  => (Fwd a -> Fwd (Df dom b))
-  -> Circuit a (a, Df dom b)
-peek f = Circuit $ \(iDat, (iAck, ack)) -> let
-  dat = f iDat
-  sel = moore go id True $ bundle (hasPayload <$> dat, coerce <$> ack) where
-    go True  (True, False) = False
-    go False (_,     True) = True
-    go s _ = s
-  in (iAck, (iDat, mux sel dat $ register empty dat))
-
-share
-  :: (HiddenClockResetEnable dom, KnownNat n, 1 <= n)
-  => Circuit (Df dom a) (Df dom b)
-  -> Circuit (Vec n (Df dom a)) (Vec n (Df dom b))
-share cir = circuit $ \xs -> do
-  fromShared <- cir -< toShared
-  (toShared, ys) <- shareEx Df.registerFwd -< (xs, fromShared)
-  idC -< ys
-
-shareEx
-  :: (HiddenClockResetEnable dom, KnownNat n, 1 <= n)
-  => Circuit (Df dom (Index n)) (Df dom (Index n))
-  -> Circuit (Vec n (Df dom a), Df dom b) (Df dom a, Vec n (Df dom b))
-shareEx buf = circuit $ \(xs, fromShared) -> do
-  let selC = peek $ fmap (maybe empty pure . findIndex hasPayload) . bundle
-  (ys, i) <- selC -< xs
-  [j, k] <- Df.fanout -< i
-  toShared <- Df.select -< (ys, j)
-  l <- buf -< k
-  zs <- Df.route <| Df.zip -< (l, fromShared)
-  idC -< (toShared, zs)
-
-shareEx'
-  :: (HiddenClockResetEnable dom, KnownNat n, 1 <= n)
-  => Circuit (Vec n (Df dom a)) (Df dom a)
-shareEx' = circuit $ \xs -> do
-  let selC = peek $ fmap (maybe empty pure . findIndex hasPayload) . bundle
-  toShared <- Df.select <| selC -< xs
-  idC -< toShared
-
---
-
-foldlC
-  :: forall dom n a b. (HiddenClockResetEnable dom, KnownNat n, 1 <= n, NFDataX a, NFDataX b)
-  => Circuit (Df dom (b, a)) (Df dom b)
-  -> Circuit (Vec n (Df dom a), Df dom b) (Df dom b)
-foldlC cir = circuit $ \(xs, y0) -> do
-  -- zipVecC :: Circuit (Vec n (Df dom a), Vec n (Df dom b)) (Vec n (Df dom a, Df dom b))
-  let zipVecC = Circuit $ \((iDats1, iDats2), iAcks) -> (unzip iAcks, zip iDats1 iDats2)
-  toShared <- repeatC Df.zip  <| zipVecC -< (fb, xs)
-  fromShared <- share cir -< toShared
-  -- feedbackC :: Circuit (Df dom a, Vec n (Df dom a)) (Vec n (Df dom a), Df dom a)
-  let feedbackC = Circuit $ \((iDat, iDats), (iAcks, iAck)) -> ((head @(n - 1) iAcks, iAcks <<+ iAck), (iDat +>> iDats, last @(n - 1) iDats))
-  (fb, yn) <- feedbackC -< (y0, fromShared)
-  idC -< yn
-
-foldrC
-  :: forall dom n a b. (HiddenClockResetEnable dom, KnownNat n, 1 <= n, NFDataX a, NFDataX b)
-  => Circuit (Df dom (a, b)) (Df dom b)
-  -> Circuit (Vec n (Df dom a), Df dom b) (Df dom b)
-foldrC cir = circuit $ \(xs, yn) -> do
-  -- zipVecC :: Circuit (Vec n (Df dom a), Vec n (Df dom b)) (Vec n (Df dom a, Df dom b))
-  let zipVecC = Circuit $ \((iDats1, iDats2), iAcks) -> (unzip iAcks, zip iDats1 iDats2)
-  toShared <- repeatC Df.zip  <| zipVecC -< (xs, fb)
-  fromShared <- share cir -< toShared
-  -- feedbackC :: Circuit (Vec n (Df dom a), Df dom a) (Df dom a, Vec n (Df dom a))
-  let feedbackC = Circuit $ \((iDats, iDat), (iAck, iAcks)) -> ((iAck +>> iAcks, last @(n - 1) iAcks), (head @(n - 1) iDats, iDats <<+ iDat))
-  (y0, fb) <- feedbackC -< (fromShared, yn)
-  idC -< y0
-
-untilC
-  :: (HiddenClockResetEnable dom, NFDataX a)
-  => (a -> Bool)
-  -> Circuit (Df dom a) (Df dom a)
-  -> Circuit (Df dom a) (Df dom a)
-untilC cond loop = circuit $ \a -> do
-  b <- Df.registerBwd <| Df.select -< ([a, f], i)
-  (c, d) <- Df.partition cond -< b
-  let go x = if hasPayload x then pure 1 else pure 0
-  (e, i) <- peek $ fmap go -< d
-  f <- loop -< e
-  idC -< c
 
 --
 

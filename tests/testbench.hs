@@ -6,7 +6,8 @@ import           Clash.Explicit.Testbench (tbSystemClockGen, outputVerifier', st
 import           Protocols ((<|), (|>), toSignals)
 import qualified Protocols.Df as Df
 
-import           ExeUnit (bram1Reader, bram1Writer, foldlC, foldrC, mkBram1, mkBram2, share, shareEx, shareEx', untilC)
+import           Edsl    (C(..), bram1Reader, bram1Writer, foldlC, foldrC, share, shareEx, shareEx', untilC)
+import           ExeUnit (mkBram1, mkBram2)
 
 --
 
@@ -105,7 +106,7 @@ sharedBram2
 sharedBram2 = exposeClockResetEnable $ \rdsigs wrsigs -> let
   bramC = circuit $ \(rdDf, wrDf) -> do
     bramOut <- mkBram2 $ iterateI (1 +) 0 -< (bramRdIn, bramWrIn)
-    (bramRdIn, [dout]) <- shareEx Df.registerFwd -< ([rdDf], bramOut)
+    (bramRdIn, [dout]) <- shareEx registerFwdC -< ([rdDf], bramOut)
     bramWrIn <- shareEx' -< [wrDf]
     idC -< dout
   ((ack0, ack1), dout) = toSignals bramC ((rdsigs, wrsigs), pure def)
@@ -143,7 +144,7 @@ tailRecursion
 tailRecursion = exposeClockResetEnable $ \din -> let
   suc = circuit $ \x -> do
     z <- mkBram2 $ iterateI (1 +) 1 -< (x, y)
-    y <- Df.pure empty
+    y <- pureC empty
     idC -< z
   (ack, dout) = toSignals (untilC (> 2) suc) (din, pure def)
   in bundle (coerce <$> ack, dout)
@@ -179,11 +180,11 @@ foldlCir
 foldlCir = exposeClockResetEnable $ \din -> let
   adderC = circuit $ \x -> do
     rdOut <- mkBram2 $ iterateI (1 +) 1 -< (rdIn, wrIn)
-    wrIn <- Df.pure empty
-    base <- Df.pure $ pure 0
-    (rdIn, xs) <- bram1Reader @System @BramData @4 @(Vec 2 BramData) Df.registerFwd -< (base, rdOut)
-    xs' <- Df.unbundleVec -< xs
-    let cir = Df.map (uncurry (+)) |> Df.registerBwd
+    wrIn <- pureC empty
+    base <- pureC $ pure 0
+    (rdIn, xs) <- bram1Reader @System @BramData @4 @(Vec 2 BramData) registerFwdC -< (base, rdOut)
+    xs' <- unbundleVecC -< xs
+    let cir = mapC (uncurry (+)) |> registerBwdC
     y <- foldlC cir -< (xs', x)
     idC -< y
   (ack, dout) = toSignals adderC (din, pure def)
@@ -220,14 +221,14 @@ foldrCir
 foldrCir = exposeClockResetEnable $ \din -> let
   multC = circuit $ \(rdBase, userIn) -> do
     rdOut <- mkBram2 $ iterateI (1 +) 1 -< (rdIn, wrIn)
-    (rdIn, [readerOut, userOut]) <- shareEx Df.registerFwd -< ([readerIn, userIn], rdOut)
-    (readerIn, xs) <- bram1Reader @System @BramData @4 @(Vec 3 BramData) Df.registerFwd -< (rdBase, readerOut)
-    xs' <- Df.unbundleVec -< xs
-    let cir = Df.map (uncurry (*)) |> Df.registerBwd
-    wrBase <- Df.pure $ pure 5
-    p <- Df.pure $ pure 1
+    (rdIn, [readerOut, userOut]) <- shareEx registerFwdC -< ([readerIn, userIn], rdOut)
+    (readerIn, xs) <- bram1Reader @System @BramData @4 @(Vec 3 BramData) registerFwdC -< (rdBase, readerOut)
+    xs' <- unbundleVecC -< xs
+    let cir = mapC (uncurry (*)) |> registerBwdC
+    wrBase <- pureC $ pure 5
+    p <- pureC $ pure 1
     y <- foldrC cir -< (xs', p)
-    wrIn <- bram1Writer @System @4 @BramData @BramData <| Df.zip -< (wrBase, y)
+    wrIn <- bram1Writer @System @4 @BramData @BramData <| zipC -< (wrBase, y)
     idC -< userOut
   ((ack0, ack1), dout) = toSignals multC (unbundle din, pure def)
   in bundle (coerce <$> ack0, coerce <$> ack1, dout)

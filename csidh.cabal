@@ -28,6 +28,7 @@ common common-options
     LambdaCase
     MultiParamTypeClasses
     NoStarIsType
+    PartialTypeSignatures
     PolyKinds
     RankNTypes
     RebindableSyntax
@@ -64,6 +65,7 @@ common common-options
     -- blackboxes attached for them. You can disable this, but be sure to add
     -- a no-specialize pragma to every function with a blackbox.
     -fno-worker-wrapper
+
   build-depends:
     base,
     Cabal,
@@ -78,7 +80,6 @@ common common-options
     interpolate,
     numeric-prelude
 
-
 custom-setup
   setup-depends:
     base          >= 4.11 && <5,
@@ -91,6 +92,7 @@ library
   exposed-modules:
     Csidh
     Design.TopEntity
+    Edsl
     ExeUnit
     PrimeField
     PrimeField.Montgomery1
@@ -105,7 +107,7 @@ library
 executable clash
   main-is: bin/Clash.hs
   default-language: Haskell2010
-  Build-Depends: base, clash-ghc, csidh
+  build-depends: base, clash-ghc, csidh
   if !os(Windows)
     ghc-options: -dynamic
 
@@ -125,7 +127,6 @@ test-suite doctests
   hs-source-dirs:   tests
 
   build-depends:
-    base,
     csidh,
     process,
     doctest >= 0.16.1 && < 0.18
@@ -159,8 +160,4 @@ test-suite testbench
   default-language: Haskell2010
   main-is:          testbench.hs
   hs-source-dirs:   tests
-
-  build-depends:
-    base,
-    csidh,
-    clash-prelude >= 1.2.5 && < 1.6
+  build-depends:    csidh
